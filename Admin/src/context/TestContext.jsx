@@ -1,0 +1,199 @@
+import React, { createContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
+
+export const TestContext = createContext();
+
+export const TestProvider = ({ children }) => {
+  const { token } = useAuth();
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [examTypes, setExamTypes] = useState(['GRE', 'SAT', 'GMAT', 'IELTS', 'ACT', 'AP']);
+  const [testTypes, setTestTypes] = useState(['Mock Test', 'Section Test', 'Topic Test']);
+  const [tests, setTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const response = await axios.get('http://localhost:5000/api/course', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Fetched courses:', response.data.courses || []);
+      setCourses(response.data.courses || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to fetch courses');
+      console.error('Fetch courses error:', err.message, err.response?.data);
+      setCourses([]);
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
+  const fetchTests = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/test', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Fetched tests:', response.data.tests || []);
+      setTests(response.data.tests || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to fetch tests');
+      console.error('Fetch tests error:', err.message, err.response?.data);
+    }
+  };
+
+  const updateTest = async (testId, testData) => {
+    try {
+      const response = await axios.put(`http://localhost:5000/api/test/${testId}`, testData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Updated test:', response.data.test);
+      setTests((prevTests) =>
+        prevTests.map((test) => (test._id === testId ? response.data.test : test))
+      );
+      return response.data.test;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to update test');
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        await Promise.all([fetchCourses(), fetchTests()]);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch data');
+        console.error('Fetch data error:', err.message, err.response?.data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (token) {
+      console.log('Fetching data with token:', token ? 'present' : 'missing');
+      fetchData();
+    }
+  }, [token]);
+
+  const createQuestion = async (questionData) => {
+    try {
+      const response = await axios.post('http://localhost:5000/api/question', questionData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTests((prevTests) =>
+        prevTests.map((test) =>
+          test._id === questionData.testId
+            ? { ...test, questions: [...(test.questions || []), response.data.question] }
+            : test
+        )
+      );
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to create question');
+    }
+  };
+
+  const createQuestions = async (questionsData) => {
+    try {
+      const response = await axios.post('http://localhost:5000/api/question', questionsData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const newQuestions = response.data.questions || [];
+      setTests((prevTests) =>
+        prevTests.map((test) =>
+          test._id === questionsData[0].testId
+            ? { ...test, questions: [...(test.questions || []), ...newQuestions] }
+            : test
+        )
+      );
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to create questions');
+    }
+  };
+
+  const updateQuestion = async (questionId, questionData) => {
+    try {
+      const response = await axios.put(`http://localhost:5000/api/question/${questionId}`, questionData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTests((prevTests) =>
+        prevTests.map((test) => {
+          if (test.questions?.some((q) => q._id === questionId)) {
+            return {
+              ...test,
+              questions: test.questions.map((q) => (q._id === questionId ? response.data.question : q)),
+            };
+          }
+          return test;
+        })
+      );
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to update question');
+    }
+  };
+
+  const deleteQuestion = async (questionId, testId) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/question/${questionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTests((prevTests) =>
+        prevTests.map((test) =>
+          test._id === testId ? { ...test, questions: test.questions.filter((q) => q._id !== questionId) } : test
+        )
+      );
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to delete question');
+    }
+  };
+
+  const fetchQuestions = async (testId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/question/test/${testId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const questions = response.data.questions || [];
+      setTests((prevTests) =>
+        prevTests.map((test) => (test._id === testId ? { ...test, questions } : test))
+      );
+      return questions;
+    } catch (err) {
+      console.error('Error fetching questions:', err.message);
+      setTests((prevTests) =>
+        prevTests.map((test) => (test._id === testId ? { ...test, questions: [] } : test))
+      );
+      return [];
+    }
+  };
+
+  return (
+    <TestContext.Provider
+      value={{
+        courses,
+        coursesLoading,
+        examTypes,
+        testTypes,
+        tests,
+        loading,
+        error,
+        createQuestion,
+        createQuestions,
+        updateQuestion,
+        deleteQuestion,
+        fetchQuestions,
+        fetchTests,
+        fetchCourses,
+        updateTest,
+      }}
+    >
+      {children}
+    </TestContext.Provider>
+  );
+};
+
+export default TestProvider;
+

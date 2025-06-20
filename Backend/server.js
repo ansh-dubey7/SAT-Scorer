@@ -1,0 +1,72 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { connectDB } from './config/mongoDb.js';
+import { connectCloudinary, upload } from './config/Cloudinary.js';
+import userRouter from './routes/userRoutes.js';
+import courseRouter from './routes/courseRoutes.js';
+import testRouter from './routes/testRoutes.js';
+import questionRouter from './routes/questionRoutes.js';
+import videoRouter from './routes/videoRoutes.js';
+import notesRouter from './routes/notesRoutes.js';
+import liveSessionRouter from './routes/liveSessionRoutes.js';
+import testResultRouter from './routes/testResultRoutes.js';
+import paymentRouter from './routes/paymentRoutes.js';
+import enrollmentRouter from './routes/enrollmentRoutes.js';
+import notificationRouter from './routes/notificationRoutes.js';
+import feedbackRouter from './routes/feedbackRoutes.js';
+import supportRouter from './routes/supportRoutes.js';
+import './models/UserModel.js';
+import './models/CourseModel.js';
+import './models/EnrollmentModel.js';
+import './models/NotificationModel.js';
+import './models/FeedbackModel.js';
+import './models/TestResultModel.js';
+import './models/SupportModel.js';
+import './models/PaymentModel.js';
+import './models/TestModel.js';
+import './models/VideoModel.js';
+import './models/NotesModel.js';
+import './models/LiveSessionModel.js';
+import './models/QuestionModel.js';
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+dotenv.config();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors({ origin: ['http://localhost:5173' , 'http://localhost:5174'], credentials: true }));
+
+connectDB();
+connectCloudinary();
+
+// Routes
+app.use('/api/user', userRouter);
+app.use('/api/course', courseRouter);
+app.use('/api/test', testRouter);
+app.use('/api/question', questionRouter);
+app.use('/api/video', videoRouter);
+app.use('/api/notes', notesRouter);
+app.use('/api/livesession', liveSessionRouter);
+app.use('/api/testresult', testResultRouter);
+app.use('/api/payment', paymentRouter);
+app.use('/api/enrollment', enrollmentRouter);
+app.use('/api/notification', notificationRouter);
+app.use('/api/feedback', feedbackRouter);
+app.use('/api/support', supportRouter);
+
+// Image Upload Route
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  try {
+    res.json({ url: req.file.path });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to upload image', error: error.message });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.send('API WORKING');
+});
+
+app.listen(port, () => console.log(`Server started at port ${port}...`));
