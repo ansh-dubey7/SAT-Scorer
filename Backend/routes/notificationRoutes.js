@@ -1,14 +1,15 @@
-import express from "express"
-import { getNotification, markAsRead, createNotification, getAllNotificaitions, deleteNotification } from "../controllers/notificationController.js";
+import express from "express";
+import { getNotification, markAsRead, createNotification, getAllNotifications, deleteNotification, resendNotification } from "../controllers/notificationController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { upload } from "../config/cloudinary.js";
 
 const notificationRouter = express.Router();
 
-notificationRouter.get('/notifications',authMiddleware, getNotification );
-notificationRouter.put('/read/:id',authMiddleware, markAsRead );
+notificationRouter.get('/notifications', authMiddleware, getNotification);
+notificationRouter.put('/read/:id', authMiddleware, markAsRead);
+notificationRouter.post('/', authMiddleware, upload.single('image'), createNotification);
+notificationRouter.get('/', authMiddleware, getAllNotifications);
+notificationRouter.delete('/:id', authMiddleware, deleteNotification);
+notificationRouter.post('/resend/:id', authMiddleware, resendNotification);
 
-notificationRouter.post('/',authMiddleware, createNotification );
-notificationRouter.get('/',authMiddleware, getAllNotificaitions );
-notificationRouter.delete('/:id',authMiddleware, deleteNotification );
-
-export default notificationRouter
+export default notificationRouter;

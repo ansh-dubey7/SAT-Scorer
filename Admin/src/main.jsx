@@ -3,15 +3,17 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
-import { AuthProvider } from './context/AuthContext';
-import { TestProvider } from './context/TestContext';
-
+import { AuthProvider } from './context/AuthContext.jsx';
+import { TestProvider } from './context/TestContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx'
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <AuthProvider>
-      <TestProvider>  
-        <App />
-      </TestProvider>  
+      <NotificationProvider>
+        <TestProvider>  
+          <App />
+        </TestProvider>
+      </NotificationProvider>
     </AuthProvider>  
   </BrowserRouter>
 )

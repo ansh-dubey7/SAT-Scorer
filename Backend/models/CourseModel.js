@@ -4,7 +4,7 @@ const CourseSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   examType: { type: String, enum: ['GRE', 'SAT', 'GMAT', 'IELTS', 'ACT', 'AP'], required: true },
-  price: { type: Number, required: true },
+  price: { type: Number, required: true, min:0 },
   thumbnail: { type: String }, // URL to thumbnail image
   about: { type: String }, // About the batch/course
   visibility: { type: String, enum: ['private', 'public'], default: 'public' },

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { initializeSocket } from './utils/Socket.js';
 import { connectDB } from './config/mongoDb.js';
 import { connectCloudinary, upload } from './config/Cloudinary.js';
 import userRouter from './routes/userRoutes.js';
@@ -29,17 +31,37 @@ import './models/VideoModel.js';
 import './models/NotesModel.js';
 import './models/LiveSessionModel.js';
 import './models/QuestionModel.js';
+import { scheduleNotifications } from './utils/scheduleNotifications.js';
+
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
+const server = createServer(app);
+const io = initializeSocket(server);
 
-dotenv.config();
+// Middleware to capture raw body for webhook
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payment/webhook') {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk) => (data += chunk));
+    req.on('end', () => {
+      req.rawBody = data;
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: ['http://localhost:5173' , 'http://localhost:5174'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
 
 connectDB();
 connectCloudinary();
+scheduleNotifications(io); // Initialize scheduled notifications
 
 // Routes
 app.use('/api/user', userRouter);
@@ -69,4 +91,11 @@ app.get('/', (req, res) => {
   res.send('API WORKING');
 });
 
-app.listen(port, () => console.log(`Server started at port ${port}...`));
+// Debug log for environment variables
+console.log('Environment Variables Loaded:', {
+  CASHFREE_APP_ID: process.env.CASHFREE_APP_ID ? 'Set' : 'Missing',
+  CASHFREE_SECRET_KEY: process.env.CASHFREE_SECRET_KEY ? 'Set' : 'Missing',
+  CASHFREE_API_URL: process.env.CASHFREE_API_URL,
+});
+
+server.listen(port, () => console.log(`Server started at port ${port}...`));

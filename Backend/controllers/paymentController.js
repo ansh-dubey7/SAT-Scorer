@@ -1,317 +1,321 @@
+import axios from 'axios';
+import dotenv from 'dotenv';
+dotenv.config();
 import mongoose from 'mongoose';
-import { Cashfree } from 'cashfree-pg';
-import crypto from 'crypto';
 import PaymentModel from '../models/PaymentModel.js';
-import UserModel from '../models/UserModel.js';
 import CourseModel from '../models/CourseModel.js';
+import UserModel from '../models/UserModel.js';
 import EnrollmentModel from '../models/EnrollmentModel.js';
+import { verifyWebhookSignature } from '../utils/CashfreeWebhook.js';
 
-// Initialize Cashfree SDK
-const cashfree = new Cashfree({
-    appId: process.env.CASHFREE_APP_ID,
-    secretKey: process.env.CASHFREE_SECRET_KEY,
-    env: process.env.CASHFREE_ENV || 'sandbox'
-});
+const CASHFREE_API_URL = process.env.CASHFREE_API_URL || 'https://sandbox.cashfree.com/pg';
+const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
+const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
 
-// Initiate a payment (Authenticated users)
+// Initiate Payment
 const initiatePayment = async (req, res) => {
+  try {
+    const { courseId, amount } = req.body;
+    const userId = req.user.userId;
+
+    console.log('Initiate Payment Request:', { courseId, amount, userId });
+
+    // Validate Cashfree credentials
+    if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
+      console.error('Missing Cashfree credentials:', {
+        appIdSet: !!CASHFREE_APP_ID,
+        secretKeySet: !!CASHFREE_SECRET_KEY,
+      });
+      return res.status(500).json({ message: 'Payment gateway configuration error' });
+    }
+
+    if (!mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Invalid course ID or user ID' });
+    }
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      console.error('Invalid amount:', amount);
+      return res.status(400).json({ message: 'Valid amount is required' });
+    }
+
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (course.status !== 'published') {
+      return res.status(400).json({ message: 'Course is not available for enrollment' });
+    }
+
+    if (amount !== course.price) {
+      console.error(`Amount mismatch: Provided ${amount}, Expected ${course.price}`);
+      return res.status(400).json({ message: 'Amount does not match course price' });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const existingEnrollment = await EnrollmentModel.findOne({ userId, courseId, status: 'active' });
+    if (existingEnrollment) {
+      return res.status(400).json({ message: 'User is already enrolled in this course' });
+    }
+
+    const payment = new PaymentModel({
+      userId,
+      courseId,
+      amount,
+      status: 'pending',
+      paymentDate: new Date(),
+      cashfreeOrderId: `order_${Date.now()}_${userId}`,
+    });
+    await payment.save();
+
+    const orderData = {
+      order_id: payment.cashfreeOrderId,
+      order_amount: amount,
+      order_currency: 'INR',
+      customer_details: {
+        customer_id: userId.toString(),
+        customer_name: user.name,
+        customer_email: user.email,
+        customer_phone: user.phone || '1234567890',
+      },
+      order_meta: {
+        return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+        notify_url: `${process.env.SERVER_URL}/api/payment/webhook`,
+      },
+    };
+
+    console.log('Sending Cashfree order request:', {
+      order_id: orderData.order_id,
+      order_amount: orderData.order_amount,
+      api_url: CASHFREE_API_URL,
+    });
+
+    const response = await axios.post(`${CASHFREE_API_URL}/orders`, orderData, {
+      headers: {
+        'x-api-version': '2023-08-01',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const { payment_session_id, order_id } = response.data;
+
+    await UserModel.findByIdAndUpdate(userId, { $push: { payments: payment._id } });
+
+    res.status(200).json({ payment_session_id, order_id });
+  } catch (error) {
+    console.error('Error initiating payment:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Server error while initiating payment', error: error.message });
+  }
+};
+
+// Handle Cashfree Webhook
+const updatePaymentStatus = async (req, res) => {
+  try {
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+    const signature = req.headers['x-webhook-signature'];
+
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      return res.status(401).json({ message: 'Invalid webhook signature' });
+    }
+
+    const { data } = req.body;
+    const { order, payment } = data;
+
+    if (!order || !payment || !order.order_id) {
+      return res.status(400).json({ message: 'Invalid webhook payload' });
+    }
+
+    const paymentRecord = await PaymentModel.findOne({ cashfreeOrderId: order.order_id });
+    if (!paymentRecord) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    if (paymentRecord.status !== 'pending') {
+      return res.status(400).json({ message: 'Payment already processed' });
+    }
+
+    const session = await mongoose.startSession();
     try {
-        const { courseId, amount } = req.body;
-        const userId = req.user.id;
+      await session.withTransaction(async () => {
+        paymentRecord.status = payment.payment_status === 'SUCCESS' ? 'completed' : 'failed';
+        paymentRecord.paymentDate = new Date();
+        await paymentRecord.save({ session });
 
-        // Validate required fields
-        if (!courseId || !amount) {
-            return res.status(400).json({ message: 'courseId and amount are required' });
-        }
+        if (payment.payment_status === 'SUCCESS') {
+          const existingEnrollment = await EnrollmentModel.findOne({
+            userId: paymentRecord.userId,
+            courseId: paymentRecord.courseId,
+            status: 'active',
+          }).session(session);
 
-        // Validate IDs
-        if (!mongoose.isValidObjectId(courseId)) {
-            return res.status(400).json({ message: 'Invalid course ID' });
-        }
-        if (!mongoose.isValidObjectId(userId)) {
-            return res.status(400).json({ message: 'Invalid user ID' });
-        }
+          if (!existingEnrollment) {
+            const enrollment = new EnrollmentModel({
+              userId: paymentRecord.userId,
+              courseId: paymentRecord.courseId,
+              enrolledAt: new Date(),
+              status: 'active',
+            });
+            await enrollment.save({ session });
 
-        // Verify course exists
-        const course = await CourseModel.findById(courseId);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
+            await Promise.all([
+              UserModel.findByIdAndUpdate(
+                paymentRecord.userId,
+                { $push: { enrolledCourses: enrollment._id } },
+                { session }
+              ),
+              CourseModel.findByIdAndUpdate(
+                paymentRecord.courseId,
+                { $push: { enrollments: enrollment._id } },
+                { session }
+              ),
+            ]);
+          }
         }
+      });
+    } finally {
+      await session.endSession();
+    }
 
-        // Verify user exists
-        const user = await UserModel.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+    res.status(200).json({ message: 'Webhook processed successfully' });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).json({ message: 'Server error while processing webhook', error: error.message });
+  }
+};
 
-        // Validate amount
-        if (typeof amount !== 'number' || amount <= 0) {
-            return res.status(400).json({ message: 'Amount must be a positive number' });
-        }
-        if (amount !== course.price) {
-            return res.status(400).json({ message: 'Amount does not match course price' });
-        }
+// Manual Payment Verification (Fallback or Client-Side)
+const verifyPayment = async (req, res) => {
+  try {
+    const { orderId, courseId, userId } = req.body;
+    
 
-        // Check if already enrolled
-        const existingEnrollment = await EnrollmentModel.findOne({ userId, courseId, status: 'active' });
-        if (existingEnrollment) {
-            return res.status(400).json({ message: 'User is already enrolled in this course' });
-        }
+    if (!orderId || !mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: `Invalid order ID ${userId} , course ID, or user ID` });
+    }
 
-        // Create payment record
-        const payment = new PaymentModel({
+    const paymentRecord = await PaymentModel.findOne({ cashfreeOrderId: orderId });
+    if (!paymentRecord) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
+    if (paymentRecord.status === 'completed') {
+      return res.status(200).json({ message: 'Payment already processed and user enrolled' });
+    }
+
+    const response = await axios.get(`${CASHFREE_API_URL}/orders/${orderId}`, {
+      headers: {
+        'x-api-version': '2023-08-01',
+        'x-client-id': CASHFREE_APP_ID,
+        'x-client-secret': CASHFREE_SECRET_KEY,
+      },
+    });
+
+    const orderStatus = response.data.order_status;
+    if (orderStatus !== 'PAID') {
+      paymentRecord.status = 'failed';
+      await paymentRecord.save();
+      return res.status(400).json({ message: 'Payment not completed' });
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        paymentRecord.status = 'completed';
+        paymentRecord.paymentDate = new Date();
+        await paymentRecord.save({ session });
+
+        const existingEnrollment = await EnrollmentModel.findOne({
+          userId,
+          courseId,
+          status: 'active',
+        }).session(session);
+
+        if (!existingEnrollment) {
+          const enrollment = new EnrollmentModel({
             userId,
             courseId,
-            amount,
-            status: 'pending',
-            paymentDate: new Date()
-        });
-        await payment.save();
+            enrolledAt: new Date(),
+            status: 'active',
+          });
+          await enrollment.save({ session });
 
-        // Create Cashfree order
-        const orderId = `order_${payment._id}_${Date.now()}`;
-        const order = {
-            order_id: orderId,
-            order_amount: amount,
-            order_currency: 'INR',
-            customer_details: {
-                customer_id: userId,
-                customer_name: user.name,
-                customer_email: user.email,
-                customer_phone: user.phone || '9999999999'
-            },
-            order_meta: {
-                return_url: `${process.env.FRONTEND_URL}/payment-status?order_id={order_id}&order_token={order_token}`,
-                notify_url: `${req.protocol}://${req.get('host')}/api/payment/webhook`
-            }
-        };
-
-        const cashfreeOrder = await cashfree.orders.create(order);
-
-        if (!cashfreeOrder || !cashfreeOrder.payment_session_id) {
-            await PaymentModel.findByIdAndUpdate(payment._id, { status: 'failed' });
-            return res.status(500).json({ message: 'Failed to create Cashfree order' });
+          await Promise.all([
+            UserModel.findByIdAndUpdate(userId, { $push: { enrolledCourses: enrollment._id } }, { session }),
+            CourseModel.findByIdAndUpdate(courseId, { $push: { enrollments: enrollment._id } }, { session }),
+          ]);
         }
-
-        // Update user payments
-        await UserModel.findByIdAndUpdate(userId, { $push: { payments: payment._id } });
-
-        res.status(200).json({
-            message: 'Payment initiated successfully',
-            paymentSessionId: cashfreeOrder.payment_session_id,
-            orderId: cashfreeOrder.order_id,
-            payment
-        });
-    } catch (error) {
-        console.error('Error initiating payment:', error);
-        res.status(500).json({ message: 'Server error while initiating payment', error: error.message });
+      });
+    } finally {
+      await session.endSession();
     }
+
+    res.status(200).json({ message: 'Payment verified and user enrolled successfully' });
+  } catch (error) {
+    console.error('Error verifying payment:', error.response?.data || error);
+    res.status(500).json({ message: 'Server error while verifying payment', error: error.message });
+  }
 };
 
-// Get user's payment history (Authenticated users)
+// Get Payment History for a User
 const getPaymentHistory = async (req, res) => {
-    try {
-        const userId = req.user.id;
-
-        if (!mongoose.isValidObjectId(userId)) {
-            return res.status(400).json({ message: 'Invalid user ID' });
-        }
-
-        const payments = await PaymentModel
-            .find({ userId })
-            .populate('userId', 'name email')
-            .populate('courseId', 'title examType');
-
-        if (!payments || payments.length === 0) {
-            return res.status(404).json({ message: 'No payment history found for this user' });
-        }
-
-        res.status(200).json({
-            message: 'Payment history retrieved successfully',
-            count: payments.length,
-            payments
-        });
-    } catch (error) {
-        console.error('Error fetching payment history:', error);
-        res.status(500).json({ message: 'Server error while fetching payment history', error: error.message });
-    }
+  try {
+    const userId = req.user.userId;
+    const payments = await PaymentModel.find({ userId }).populate('courseId', 'title');
+    res.status(200).json({
+      message: 'Payment history retrieved successfully',
+      count: payments.length,
+      payments,
+    });
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    res.status(500).json({ message: 'Server error while fetching payment history', error: error.message });
+  }
 };
 
-// Get all payments (Admin only)
+// Get All Payments (Admin only)
 const getAllPayment = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Access denied. Admin privileges required' });
-        }
-
-        const payments = await PaymentModel
-            .find()
-            .populate('userId', 'name email')
-            .populate('courseId', 'title examType');
-
-        if (!payments || payments.length === 0) {
-            return res.status(404).json({ message: 'No payments found' });
-        }
-
-        res.status(200).json({
-            message: 'All payments retrieved successfully',
-            count: payments.length,
-            payments
-        });
-    } catch (error) {
-        console.error('Error fetching all payments:', error);
-        res.status(500).json({ message: 'Server error while fetching all payments', error: error.message });
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required' });
     }
+    const payments = await PaymentModel.find().populate('userId', 'name email').populate('courseId', 'title');
+    res.status(200).json({
+      message: 'All payments retrieved successfully',
+      count: payments.length,
+      payments,
+    });
+  } catch (error) {
+    console.error('Error fetching all payments:', error);
+    res.status(500).json({ message: 'Server error while fetching all payments', error: error.message });
+  }
 };
 
-// Get payments for a specific user (Admin only)
+// Get Payments for a Specific User (Admin only)
 const getPaymentForAUser = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Access denied. Admin privileges required' });
-        }
-
-        const userId = req.params.userId;
-        if (!mongoose.isValidObjectId(userId)) {
-            return res.status(400).json({ message: 'Invalid user ID' });
-        }
-
-        // Verify user exists
-        const user = await UserModel.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        const payments = await PaymentModel
-            .find({ userId })
-            .populate('userId', 'name email')
-            .populate('courseId', 'title examType');
-
-        if (!payments || payments.length === 0) {
-            return res.status(404).json({ message: 'No payments found for this user' });
-        }
-
-        res.status(200).json({
-            message: 'Payments for user retrieved successfully',
-            count: payments.length,
-            payments
-        });
-    } catch (error) {
-        console.error('Error fetching payments for user:', error);
-        res.status(500).json({ message: 'Server error while fetching payments', error: error.message });
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required' });
     }
+    const userId = req.params.userId;
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    const payments = await PaymentModel.find({ userId }).populate('courseId', 'title');
+    res.status(200).json({
+      message: 'User payments retrieved successfully',
+      count: payments.length,
+      payments,
+    });
+  } catch (error) {
+    console.error('Error fetching user payments:', error);
+    res.status(500).json({ message: 'Server error while fetching user payments', error: error.message });
+  }
 };
 
-// Update payment status (Admin only or Webhook)
-const updatePaymentStatus = async (req, res) => {
-    try {
-        // Check if request is from webhook (no authMiddleware for webhook)
-        const isWebhook = req.headers['x-webhook-signature'];
-        let paymentId;
-
-        if (isWebhook) {
-            // Webhook request
-            const signature = req.headers['x-webhook-signature'];
-            const rawBody = JSON.stringify(req.body);
-
-            // Verify webhook signature
-            const expectedSignature = crypto
-                .createHmac('sha256', process.env.CASHFREE_SECRET_KEY)
-                .update(rawBody)
-                .digest('base64');
-
-            if (signature !== expectedSignature) {
-                return res.status(401).json({ message: 'Invalid webhook signature' });
-            }
-
-            const { data } = req.body;
-            if (!data.order || !data.order.order_id) {
-                return res.status(400).json({ message: 'Invalid webhook payload' });
-            }
-
-            // Extract paymentId from order_id (format: order_paymentId_timestamp)
-            const orderIdParts = data.order.order_id.split('_');
-            if (orderIdParts.length < 2) {
-                return res.status(400).json({ message: 'Invalid order ID format' });
-            }
-            paymentId = orderIdParts[1];
-
-        } else {
-            // Admin request
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({ message: 'Access denied. Admin privileges required' });
-            }
-            paymentId = req.params.id;
-        }
-
-        if (!mongoose.isValidObjectId(paymentId)) {
-            return res.status(400).json({ message: 'Invalid payment ID' });
-        }
-
-        const payment = await PaymentModel.findById(paymentId);
-        if (!payment) {
-            return res.status(404).json({ message: 'Payment not found' });
-        }
-
-        let newStatus;
-        if (isWebhook) {
-            const { data } = req.body;
-            const paymentStatus = data.payment && data.payment.payment_status;
-
-            if (paymentStatus === 'SUCCESS') {
-                newStatus = 'completed';
-            } else if (paymentStatus === 'FAILED' || paymentStatus === 'CANCELLED') {
-                newStatus = 'failed';
-            } else {
-                return res.status(400).json({ message: 'Unknown payment status' });
-            }
-        } else {
-            // Admin manual update
-            newStatus = req.body.status;
-            if (!['pending', 'completed', 'failed'].includes(newStatus)) {
-                return res.status(400).json({ message: 'Invalid status. Must be pending, completed, or failed' });
-            }
-        }
-
-        // Update payment status
-        payment.status = newStatus;
-        await payment.save();
-
-        // If payment is completed, create enrollment
-        if (newStatus === 'completed' && payment.courseId) {
-            const existingEnrollment = await EnrollmentModel.findOne({
-                userId: payment.userId,
-                courseId: payment.courseId,
-                status: 'active'
-            });
-
-            if (!existingEnrollment) {
-                const enrollment = new EnrollmentModel({
-                    userId: payment.userId,
-                    courseId: payment.courseId,
-                    enrolledAt: new Date(),
-                    status: 'active'
-                });
-                await enrollment.save();
-
-                // Update course enrollments
-                await CourseModel.findByIdAndUpdate(payment.courseId, {
-                    $push: { enrollments: enrollment._id }
-                });
-                await UserModel.findByIdAndUpdate(payment.userId, {
-                    $push: { enrolledCourses: enrollment._id }
-                });
-            }
-        }
-
-        res.status(200).json({
-            message: 'Payment status updated successfully',
-            payment
-        });
-    } catch (error) {
-        console.error('Error updating payment status:', error);
-        res.status(500).json({ message: 'Server error while updating payment status', error: error.message });
-    }
-};
-
-export { initiatePayment, getPaymentHistory, getAllPayment, getPaymentForAUser, updatePaymentStatus };
+export { initiatePayment, updatePaymentStatus, verifyPayment, getPaymentHistory, getAllPayment, getPaymentForAUser };

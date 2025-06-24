@@ -3,45 +3,36 @@ import React from 'react';
 const NotificationModal = ({ open, onClose, notification }) => {
   if (!open || !notification) return null;
 
-  const getChannels = (channels) => {
-    const selected = [];
-    if (channels.email) selected.push('Email');
-    if (channels.push) selected.push('Push');
-    if (channels.sms) selected.push('SMS');
-    return selected.join(', ') || 'None';
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white/90 rounded-lg border border-gray-200 max-w-lg w-full p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">{notification.title}</h2>
+          <h2 className="text-xl font-semibold text-gray-800">{notification.title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-600 hover:bg-gray-200 rounded-full p-2"
+            className="text-gray-600 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
             aria-label="Close notification modal"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="space-y-4 text-sm text-gray-600">
-          <p><strong>Audience:</strong> {notification.audience.type === 'user' ? `User: ${notification.audience.value}` : notification.audience.value}</p>
-          <p><strong>Channels:</strong> {getChannels(notification.channels)}</p>
-          <p><strong>Send Date:</strong> {new Date(notification.sendDate).toLocaleString()}</p>
-          <p><strong>Status:</strong> {notification.status}</p>
-          <p><strong>Open Rate:</strong> {notification.openRate}%</p>
+        <div className="space-y-4 text-gray-600">
+          <p><strong>Audience:</strong> {notification.recipientDetails?.value || notification.recipient}</p>
+          <p><strong>Type:</strong> {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}</p>
+          <p><strong>Send Date:</strong> {new Date(notification.createdAt).toLocaleString()}</p>
+          <p><strong>Status:</strong> {notification.status.charAt(0).toUpperCase() + notification.status.slice(1)}</p>
           <div>
-            <strong>Content:</strong>
-            <pre className="mt-2 p-3 bg-white rounded-md border border-gray-200 text-sm text-gray-600 whitespace-pre-wrap">
-              {notification.content}
+            <strong>Message:</strong>
+            <pre className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-wrap">
+              {notification.message}
             </pre>
           </div>
           {notification.image && (
             <div>
               <strong>Image:</strong>
-              <img src={notification.image} alt="Announcement" className="mt-2 max-w-full rounded-md border border-gray-200" />
+              <img src={notification.image} alt="Notification" className="mt-2 max-w-full rounded-lg border border-gray-200" />
             </div>
           )}
         </div>
