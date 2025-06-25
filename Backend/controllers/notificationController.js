@@ -5,6 +5,9 @@ import CourseModel from '../models/CourseModel.js';
 import { emitNotification } from '../utils/Socket.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary.js';
 import EnrollmentModel from '../models/EnrollmentModel.js';
+import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
+import { oauth2Client, getAccessToken } from '../config/googleAuth.js';
 
 const getNotification = async (req, res) => {
   try {
@@ -55,19 +58,16 @@ const markAsRead = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. You are not a recipient of this notification' });
     }
 
-    // Add user to readBy array
     if (!notification.readBy.includes(userId)) {
       notification.readBy.push(userId);
       await notification.save();
     }
 
-    // Remove notification from user's notifications array
     await UserModel.updateOne(
       { _id: userId },
       { $pull: { notifications: notificationId } }
     );
 
-    // Check if all recipients have read the notification
     if (notification.readBy.length === notification.userId.length) {
       if (notification.image) {
         await deleteFromCloudinary(notification.image);
@@ -94,10 +94,10 @@ const createNotification = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Admin privileges required' });
     }
 
-    const { title, message, type, recipient, audienceType, scheduledAt } = req.body;
+    const { title, message, type, recipient, audienceType, scheduledAt, channel } = req.body;
 
-    if (!title || !message || !type || !audienceType) {
-      return res.status(400).json({ message: 'Title, message, type, and audience type are required' });
+    if (!title || !message || !type || !audienceType || !channel) {
+      return res.status(400).json({ message: 'Title, message, type, audience type, and channel are required' });
     }
 
     if (!['announcement', 'reminder'].includes(type)) {
@@ -108,12 +108,18 @@ const createNotification = async (req, res) => {
       return res.status(400).json({ message: 'Invalid audience type' });
     }
 
+    if (!['in-app', 'email'].includes(channel)) {
+      return res.status(400).json({ message: 'Invalid notification channel' });
+    }
+
     let userIds = [];
     let recipientValue = recipient;
+    let emailAddresses = [];
 
     if (audienceType === 'all') {
-      const users = await UserModel.find({ status: 'active', role: 'student' }).select('_id');
+      const users = await UserModel.find({ status: 'active', role: 'student' }).select('_id email');
       userIds = users.map(user => user._id);
+      emailAddresses = users.map(user => user.email);
       recipientValue = 'all';
     } else if (audienceType === 'course') {
       if (!mongoose.isValidObjectId(recipient)) {
@@ -124,10 +130,11 @@ const createNotification = async (req, res) => {
         return res.status(404).json({ message: 'Course not found' });
       }
       const enrollments = await EnrollmentModel.find({ courseId: recipient }).populate('userId');
-      userIds = enrollments
+      const activeStudents = enrollments
         .map(enrollment => enrollment.userId)
-        .filter(user => user.status === 'active' && user.role === 'student')
-        .map(user => user._id);
+        .filter(user => user.status === 'active' && user.role === 'student');
+      userIds = activeStudents.map(user => user._id);
+      emailAddresses = activeStudents.map(user => user.email);
       if (userIds.length === 0) {
         return res.status(400).json({ message: 'No active students enrolled in this course' });
       }
@@ -140,6 +147,7 @@ const createNotification = async (req, res) => {
         return res.status(404).json({ message: 'Active student not found' });
       }
       userIds = [recipient];
+      emailAddresses = [user.email];
     }
 
     let imageUrl = '';
@@ -160,8 +168,9 @@ const createNotification = async (req, res) => {
       readBy: [],
       type,
       recipient: recipientValue,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      status: scheduledAt ? 'pending' : 'sent',
+      scheduledAt: channel === 'in-app' && scheduledAt ? new Date(scheduledAt) : null,
+      status: channel === 'in-app' && scheduledAt ? 'pending' : 'sent',
+      channel,
     });
 
     await notification.save();
@@ -171,12 +180,49 @@ const createNotification = async (req, res) => {
       { $push: { notifications: notification._id } }
     );
 
-    if (!scheduledAt) {
+    if (channel === 'email') {
+      try {
+        const accessToken = await getAccessToken();
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            type: 'OAuth2',
+            user: process.env.GMAIL_USER,
+            clientId: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
+            refreshToken: process.env.REFRESH_TOKEN,
+            accessToken,
+          },
+        });
+
+        const mailOptions = {
+          from: process.env.GMAIL_USER,
+          to: emailAddresses.join(','),
+          subject: title,
+          text: message,
+          html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>${title}</h2>
+              ${imageUrl ? `<img src="${imageUrl}" alt="Notification Image" style="max-width: 100%; height: auto; margin: 10px 0;" />` : ''}
+              <p>${message.replace(/\n/g, '<br>')}</p>
+            </div>
+          `,
+        };
+
+        await transporter.sendMail(mailOptions);
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+        // Save notification as failed if email sending fails
+        notification.status = 'failed';
+        await notification.save();
+        return res.status(500).json({ message: 'Failed to send email', error: emailError.message });
+      }
+    } else if (channel === 'in-app' && !scheduledAt) {
       emitNotification(userIds.map(id => id.toString()), notification);
     }
 
     res.status(201).json({
-      message: scheduledAt ? 'Notification scheduled successfully' : 'Notification created successfully',
+      message: channel === 'email' ? 'Email notification sent successfully' : (scheduledAt ? 'Notification scheduled successfully' : 'Notification created successfully'),
       notification,
     });
   } catch (error) {
@@ -293,7 +339,48 @@ const resendNotification = async (req, res) => {
       { $push: { notifications: notification._id } }
     );
 
-    emitNotification(notification.userId.map(id => id.toString()), notification);
+    if (notification.channel === 'email') {
+      const users = await UserModel.find({ _id: { $in: notification.userId } }).select('email');
+      const emailAddresses = users.map(user => user.email);
+
+      try {
+        const accessToken = await getAccessToken();
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            type: 'OAuth2',
+            user: process.env.GMAIL_USER,
+            clientId: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
+            refreshToken: process.env.REFRESH_TOKEN,
+            accessToken,
+          },
+        });
+
+        const mailOptions = {
+          from: process.env.GMAIL_USER,
+          to: emailAddresses.join(','),
+          subject: notification.title,
+          text: notification.message,
+          html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>${notification.title}</h2>
+              ${notification.image ? `<img src="${notification.image}" alt="Notification Image" style="max-width: 100%; height: auto; margin: 10px 0;" />` : ''}
+              <p>${notification.message.replace(/\n/g, '<br>')}</p>
+            </div>
+          `,
+        };
+
+        await transporter.sendMail(mailOptions);
+      } catch (emailError) {
+        console.error('Error resending email:', emailError);
+        notification.status = 'failed';
+        await notification.save();
+        return res.status(500).json({ message: 'Failed to resend email', error: emailError.message });
+      }
+    } else {
+      emitNotification(notification.userId.map(id => id.toString()), notification);
+    }
 
     res.status(200).json({
       message: 'Notification resent successfully',

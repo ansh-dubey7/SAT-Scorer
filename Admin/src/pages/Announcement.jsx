@@ -8,7 +8,7 @@ const Announcement = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="sticky top-20 z-30 bg-white shadow-md border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800 px-6 py-4">Notification Management Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-800 px-6 py-4">Announcement Management Dashboard</h1>
         <div className="flex border-b border-gray-200 px-6">
           {['create', 'manage'].map((tab) => (
             <button
@@ -20,7 +20,7 @@ const Announcement = () => {
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              {tab === 'create' ? 'Create Notification' : 'Manage Notifications'}
+              {tab === 'create' ? 'Create Announcement' : 'View Announcements'}
             </button>
           ))}
         </div>

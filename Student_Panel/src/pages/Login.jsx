@@ -152,7 +152,7 @@ const Login = () => {
     if (Object.values(newErrors).every((error) => !error)) {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        navigate('/studentdashboard');
+        navigate('/');
       } else {
         setServerError(result.error);
       }

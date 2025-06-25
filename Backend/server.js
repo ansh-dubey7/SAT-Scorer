@@ -16,6 +16,7 @@ import testResultRouter from './routes/testResultRoutes.js';
 import paymentRouter from './routes/paymentRoutes.js';
 import enrollmentRouter from './routes/enrollmentRoutes.js';
 import notificationRouter from './routes/notificationRoutes.js';
+import emailRouter from './routes/emailRoutes.js';
 import feedbackRouter from './routes/feedbackRoutes.js';
 import supportRouter from './routes/supportRoutes.js';
 import './models/UserModel.js';
@@ -75,6 +76,7 @@ app.use('/api/testresult', testResultRouter);
 app.use('/api/payment', paymentRouter);
 app.use('/api/enrollment', enrollmentRouter);
 app.use('/api/notification', notificationRouter);
+app.use('/api/email', emailRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/support', supportRouter);
 
@@ -96,6 +98,13 @@ console.log('Environment Variables Loaded:', {
   CASHFREE_APP_ID: process.env.CASHFREE_APP_ID ? 'Set' : 'Missing',
   CASHFREE_SECRET_KEY: process.env.CASHFREE_SECRET_KEY ? 'Set' : 'Missing',
   CASHFREE_API_URL: process.env.CASHFREE_API_URL,
+  CLOUDINARY_NAME: process.env.CLOUDINARY_NAME ? 'Set' : 'Missing',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing',
+  CLOUDINARY_SECRET_KEY: process.env.CLOUDINARY_SECRET_KEY ? 'Set' : 'Missing',
+  GMAIL_USER: process.env.GMAIL_USER ? 'Set' : 'Missing',
+  CLIENT_ID: process.env.CLIENT_ID ? 'Set' : 'Missing',
+  CLIENT_SECRET: process.env.CLIENT_SECRET ? 'Set' : 'Missing',
+  REFRESH_TOKEN: process.env.REFRESH_TOKEN ? 'Set' : 'Missing',
 });
 
 server.listen(port, () => console.log(`Server started at port ${port}...`));

@@ -14,6 +14,11 @@ const NotificationSchema = new mongoose.Schema({
     enum: ['pending', 'sent', 'failed'], 
     default: 'pending' 
   },
+  channel: { 
+    type: String, 
+    enum: ['in-app', 'email'], 
+    required: true 
+  },
 }, { timestamps: true });
 
 NotificationSchema.index({ userId: 1 });
@@ -22,3 +27,4 @@ NotificationSchema.index({ scheduledAt: 1 });
 const NotificationModel = mongoose.models.Notification || mongoose.model("Notification", NotificationSchema);
 
 export default NotificationModel;
+
