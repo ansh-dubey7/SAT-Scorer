@@ -1,12 +1,10 @@
-import React, { useState } from "react";
-import RegisteredStudents from "../components/students/RegisteredStudents";
-import EnrolledStudents from "../components/students/EnrolledStudents";
+import React from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
 
 const StudentManagement = () => {
-  const [activeTab, setActiveTab] = useState('registered');
   const tabs = [
-    { id: 'registered', label: 'Registered Students' },
-    { id: 'enrollments', label: 'Enrollments' },
+    { id: 'registered', label: 'Registered Students', path: 'registered' },
+    { id: 'enrollments', label: 'Enrollments', path: 'enrollments' },
   ];
 
   return (
@@ -18,29 +16,29 @@ const StudentManagement = () => {
         </h1>
         <div className="flex border-b border-gray-200 px-4">
           {tabs.map((tab) => (
-            <button
+            <NavLink
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 font-semibold text-lg transition-colors duration-200 ${
-                activeTab === tab.id
-                  ? 'border-b-2 border-teal-600 text-teal-600'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              to={tab.path}
+              className={({ isActive }) =>
+                `px-6 py-3 font-semibold text-lg transition-colors duration-200 ${
+                  isActive
+                    ? 'border-b-2 border-teal-600 text-teal-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`
+              }
               aria-label={`Select ${tab.label} tab`}
             >
               {tab.label}
-            </button>
+            </NavLink>
           ))}
         </div>
       </div>
       {/* Tab Content */}
       <div className="p-4">
-        {activeTab === 'registered' && <RegisteredStudents />}
-        {activeTab === 'enrollments' && <EnrolledStudents />}
+        <Outlet />
       </div>
     </div>
   );
 };
 
 export default StudentManagement;
-

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { CourseContext } from '../../context/CourseContext';
 import { toast } from 'react-toastify';
 
 const VideoTab = () => {
   const { token } = useAuth();
-  const [courses, setCourses] = useState([]);
+  const { courses, isLoading: isCoursesLoading } = useContext(CourseContext);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -13,25 +14,6 @@ const VideoTab = () => {
   const [videos, setVideos] = useState([]);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoURL, setVideoURL] = useState('');
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      try {
-        const response = await axios.get('http://localhost:5000/api/course/all', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Courses fetched (Videos):', response.data.courses);
-        setCourses(response.data.courses);
-      } catch (error) {
-        console.error('Error fetching courses (Videos):', error);
-        toast.error(error.response?.data?.message || 'Failed to fetch courses.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCourses();
-  }, [token]);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -56,7 +38,6 @@ const VideoTab = () => {
           setIsLoading(false);
         }
       } else {
-        console.log('No course selected, clearing videos');
         setVideos([]);
       }
     };
@@ -68,14 +49,12 @@ const VideoTab = () => {
   );
 
   const handleCourseSelect = (course) => {
-    console.log('Course selected (Videos):', course);
     setSelectedCourse(course);
     setSearchQuery('');
     setIsDropdownOpen(false);
   };
 
   const clearCourse = () => {
-    console.log('Clearing selected course (Videos)');
     setSelectedCourse(null);
     setSearchQuery('');
   };
@@ -139,7 +118,7 @@ const VideoTab = () => {
             onFocus={() => setIsDropdownOpen(true)}
             placeholder="Search for a course..."
             className="w-full p-3 border border-gray-300 rounded-md bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500 pr-10"
-            disabled={isLoading || courses.length === 0}
+            disabled={isLoading || isCoursesLoading || courses.length === 0}
           />
           {selectedCourse && (
             <button
@@ -167,10 +146,10 @@ const VideoTab = () => {
             </div>
           )}
         </div>
-        {courses.length === 0 && !isLoading && (
+        {courses.length === 0 && !isCoursesLoading && (
           <p className="mt-2 text-sm text-gray-500">No courses available. Please create a course first.</p>
         )}
-        {isLoading && <p className="mt-2 text-sm text-gray-500">Loading courses...</p>}
+        {isCoursesLoading && <p className="mt-2 text-sm text-gray-500">Loading courses...</p>}
       </div>
       <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Video</h3>

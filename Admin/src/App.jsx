@@ -5,8 +5,20 @@ import Login from './pages/Login';
 import Layout from './pages/Layout';
 import Dashboard from './pages/Dashboard';
 import CourseManagement from './pages/CourseManagement';
+import CreateCourseForm from './components/course/CreateCourseForm';
+import CourseContentTab from './components/course/CourseContentTab';
+import ManageCoursesTable from './components/course/ManageCoursesTable';
 import TestManagement from './pages/TestManagement';
+import CreateTest from './components/tests/CreateTest';
+import TestDetailsForm from './components/tests/TestDetailsForm';
+import AddQuestions from './components/tests/AddQuestions';
+import ManageTests from './components/tests/ManageTests';
+import EditTestDrawer from './components/tests/EditTestDrawer';
+import TestAnalytics from './components/tests/TestAnalytics';
 import StudentManagement from './pages/StudentManagement';
+import RegisteredStudents from './components/students/RegisteredStudents';
+import EnrolledStudents from './components/students/EnrolledStudents';
+import ProfileDialog from './components/students/ProfileDialog';
 import SalesAndPayments from './pages/SalesAndPayments';
 import UpdateContent from './pages/UpdateContent';
 import LiveSessions from './pages/LiveSessions';
@@ -17,7 +29,7 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import './toastify-custom.css'; // Custom CSS for toast styling
+import './toastify-custom.css';
 
 const ProtectedRoute = ({ children }) => {
   const { user, token, isLoading } = useAuth();
@@ -53,9 +65,35 @@ const App = () => {
         <Route path="/" element={<Layout />}>
           <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>} />
-          <Route path="tests" element={<ProtectedRoute><TestManagement /></ProtectedRoute>} />
-          <Route path="students" element={<ProtectedRoute><StudentManagement /></ProtectedRoute>} />
+
+          <Route path="courses" element={<ProtectedRoute><CourseManagement /></ProtectedRoute>}>
+            <Route index element={<Navigate to="create" replace />} />
+            <Route path="create" element={<CreateCourseForm />} />
+            <Route path="content" element={<CourseContentTab />} />
+            <Route path="manage" element={<ManageCoursesTable />} />
+          </Route>
+
+          <Route path="tests" element={<ProtectedRoute><TestManagement /></ProtectedRoute>}>
+            <Route index element={<Navigate to="create" replace />} />
+            <Route path="create" element={<CreateTest />}>
+              <Route index element={<Navigate to="details" replace />} />
+              <Route path="details" element={<TestDetailsForm />} />
+              <Route path="questions" element={<AddQuestions />} />
+            </Route>
+            <Route path="manage" element={<ManageTests />}>
+              <Route path=":testId/edit" element={<EditTestDrawer />} />
+            </Route>
+            <Route path="analytics" element={<TestAnalytics />} />
+          </Route>
+
+          <Route path="students" element={<ProtectedRoute><StudentManagement /></ProtectedRoute>}>
+            <Route index element={<Navigate to="registered" replace />} />
+            <Route path="registered" element={<RegisteredStudents />}>
+              <Route path=":studentId/profile" element={<ProfileDialog />} />
+            </Route>
+            <Route path="enrollments" element={<EnrolledStudents />} />
+          </Route>
+
           <Route path="sales" element={<ProtectedRoute><SalesAndPayments /></ProtectedRoute>} />
           <Route path="content" element={<ProtectedRoute><UpdateContent /></ProtectedRoute>} />
           <Route path="live" element={<ProtectedRoute><LiveSessions /></ProtectedRoute>} />

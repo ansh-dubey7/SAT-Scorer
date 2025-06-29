@@ -1,35 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { CourseContext } from '../../context/CourseContext';
 import { toast } from 'react-toastify';
 import EditCourseDrawer from './EditCourseDrawer';
 
 const ManageCoursesTable = () => {
   const { token } = useAuth();
-  const [courses, setCourses] = useState([]);
+  const { courses, setCourses, isLoading } = useContext(CourseContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterExam, setFilterExam] = useState('');
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      try {
-        const response = await axios.get('http://localhost:5000/api/course/all', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCourses(response.data.courses);
-      } catch (error) {
-        console.error('Error fetching courses:', error);
-        toast.error(error.response?.data?.message || 'Failed to fetch courses.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCourses();
-  }, [token]);
 
   const handleEdit = (course) => {
     setSelectedCourse(course);
@@ -39,7 +21,6 @@ const ManageCoursesTable = () => {
   const handleDelete = async (courseId) => {
     if (!window.confirm('Are you sure you want to delete this course?')) return;
 
-    setIsLoading(true);
     try {
       await axios.delete(`http://localhost:5000/api/course/${courseId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -49,8 +30,6 @@ const ManageCoursesTable = () => {
     } catch (error) {
       console.error('Error deleting course:', error);
       toast.error(error.response?.data?.message || 'Failed to delete course.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -104,7 +83,9 @@ const ManageCoursesTable = () => {
           <option value="SAT">SAT</option>
           <option value="ACT">ACT</option>
           <option value="GRE">GRE</option>
+          <option value="GMAT">GMAT</option>
           <option value="IELTS">IELTS</option>
+          <option value="AP">AP</option>
         </select>
       </div>
       <div className="overflow-x-auto">

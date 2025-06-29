@@ -26,7 +26,7 @@ const TestHeader = ({
   useEffect(() => {
     if (selectedCourse && courses.length > 0) {
       const course = courses.find((c) => c._id === selectedCourse);
-      if (course && course.examType) {
+      if (course && course.examType && course.examType !== examType) {
         setExamType(course.examType);
       }
     }

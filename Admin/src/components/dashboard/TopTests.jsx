@@ -36,7 +36,7 @@ const TopTests = () => {
           ))}
         </tbody>
       </table>
-      <Link to="/tests" className="text-blue-500 hover:underline mt-4 block">
+      <Link to="/tests/manage" className="text-blue-500 hover:underline mt-4 block">
         View All
       </Link>
     </div>

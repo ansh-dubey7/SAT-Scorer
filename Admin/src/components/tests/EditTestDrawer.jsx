@@ -1,28 +1,58 @@
-import React, { useState, useContext } from 'react';
-import { TestContext } from '../../context/TestContext';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import { useParams, useNavigate } from 'react-router-dom';
+import { TestContext } from '../../context/TestContext';
 import TestHeader from './TestHeader';
 import QuestionBuilder from './QuestionBuilder';
 
-const EditTestDrawer = ({ test, onClose, onUpdate }) => {
-  const { courses, examTypes, testTypes, updateTest, createQuestions, updateQuestion, deleteQuestion, fetchQuestions, fetchTests } = useContext(TestContext);
-  const [formData, setFormData] = useState({
-    _id: test._id,
-    courseId: test.courseId,
-    testType: test.testType,
-    examType: test.examType,
-    title: test.title,
-    description: test.description,
-    duration: test.duration,
-    noOfAttempts: test.noOfAttempts,
-    markingScheme: test.markingScheme,
-    status: test.status,
-    questions: test.questions || [],
-  });
+const EditTestDrawer = () => {
+  const { testId } = useParams();
+  const navigate = useNavigate();
+  const { courses, examTypes, testTypes, tests, updateTest, createQuestions, updateQuestion, deleteQuestion, fetchQuestions, fetchTests } = useContext(TestContext);
+
+  const test = useMemo(() => tests.find((t) => t._id === testId), [tests, testId]);
+
+  const initialFormData = useMemo(() => {
+    if (test) {
+      return {
+        _id: test._id,
+        courseId: test.courseId,
+        testType: test.testType,
+        examType: test.examType,
+        title: test.title,
+        description: test.description,
+        duration: test.duration,
+        noOfAttempts: test.noOfAttempts,
+        markingScheme: test.markingScheme,
+        status: test.status,
+        questions: test.questions || [],
+      };
+    }
+    return {
+      _id: '',
+      courseId: '',
+      testType: '',
+      examType: '',
+      title: '',
+      description: '',
+      duration: '',
+      noOfAttempts: 1,
+      markingScheme: '',
+      status: 'draft',
+      questions: [],
+    };
+  }, [test]);
+
+  const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState({});
   const [isSubmittingDetails, setIsSubmittingDetails] = useState(false);
   const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  // Update formData only when testId or test changes
+  useEffect(() => {
+    setFormData(initialFormData);
+  }, [initialFormData]);
 
   const validateDetails = () => {
     const newErrors = {};
@@ -105,7 +135,7 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
 
   const addQuestion = () => {
     const newQuestion = {
-      id: `temp_${Date.now()}`, // Temporary client-side ID
+      id: `temp_${Date.now()}`,
       type: 'mcq',
       text: '',
       options: [{ text: 'Option 1' }, { text: 'Option 2' }],
@@ -135,10 +165,10 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
         markingScheme: formData.markingScheme,
         status: formData.status,
       };
-      const updatedTest = await updateTest(formData._id, testData);
+      await updateTest(formData._id, testData);
       toast.success('Test details updated!');
-      onUpdate(updatedTest);
       setShowDetails(false);
+      navigate('/tests/manage');
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -153,7 +183,7 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
     }
     setIsSubmittingQuestions(true);
     try {
-      const existingQuestions = await fetchQuestions(formData._id) || [];
+      const existingQuestions = (await fetchQuestions(formData._id)) || [];
       const existingQuestionIds = existingQuestions.map((q) => q._id) || [];
 
       const updatedQuestions = [];
@@ -183,20 +213,12 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
         updatedQuestions.push(...(response.questions || []));
       }
 
-      // Update the TestModel's questions array
-      await updateTest(formData._id, { questions: updatedQuestions.map(q => q._id) });
+      await updateTest(formData._id, { questions: updatedQuestions.map((q) => q._id) });
 
-      // Refetch the updated questions
-      const fetchedQuestions = await fetchQuestions(formData._id) || [];
-      setFormData((prev) => ({
-        ...prev,
-        questions: updatedQuestions,
-      }));
-
-      // Fetch all tests to ensure state consistency
+      await fetchQuestions(formData._id);
       await fetchTests();
       toast.success('Questions updated successfully!');
-      onUpdate({ ...formData, questions: updatedQuestions });
+      navigate('/tests/manage');
     } catch (error) {
       toast.error(error.message || 'Failed to update questions');
     } finally {
@@ -204,13 +226,29 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
     }
   };
 
+  if (!test) {
+    return (
+      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0 z-50 overflow-y-auto">
+        <div className="p-4">
+          <p className="text-red-500">Test not found.</p>
+          <button
+            onClick={() => navigate('/tests/manage')}
+            className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+          >
+            Back to Manage Tests
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0 z-50 overflow-y-auto">
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Edit Test</h2>
           <button
-            onClick={onClose}
+            onClick={() => navigate('/tests/manage')}
             className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
             disabled={isSubmittingDetails || isSubmittingQuestions}
           >
@@ -325,4 +363,3 @@ const EditTestDrawer = ({ test, onClose, onUpdate }) => {
 };
 
 export default EditTestDrawer;
-

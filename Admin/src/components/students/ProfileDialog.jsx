@@ -1,51 +1,82 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { toast } from "react-toastify";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { useParams, useNavigate } from 'react-router-dom';
 
-const ProfileDialog = ({ open, onClose, student }) => {
+const ProfileDialog = () => {
+  const { studentId } = useParams();
+  const navigate = useNavigate();
+  const [student, setStudent] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
   const [reviewTestId, setReviewTestId] = useState(null);
-  const apiUrl = "http://localhost:5000/api";
+  const apiUrl = 'http://localhost:5000/api';
 
   const testReviews = {
     GRE1: {
-      name: "GRE Practice Test 1",
-      questions: ["What is the derivative of x²?", "What is the capital of France?"],
-      answers: ["2x", "Paris"],
+      name: 'GRE Practice Test 1',
+      questions: ['What is the derivative of x²?', 'What is the capital of France?'],
+      answers: ['2x', 'Paris'],
     },
     GRE2: {
-      name: "GRE Practice Test 2",
-      questions: ["Simplify: (x + 2)²", "Who wrote 'Hamlet'?"],
-      answers: ["x² + 4x + 4", "William Shakespeare"],
+      name: 'GRE Practice Test 2',
+      questions: ['Simplify: (x + 2)²', 'Who wrote "Hamlet"?'],
+      answers: ['x² + 4x + 4', 'William Shakespeare'],
     },
     IELTS1: {
-      name: "IELTS Mock Test 1",
-      questions: ["Describe your hometown.", "Talk about a recent journey."],
-      answers: ["My hometown is vibrant and diverse...", "I recently traveled to the mountains..."],
+      name: 'IELTS Mock Test 1',
+      questions: ['Describe your hometown.', 'Talk about a recent journey.'],
+      answers: ['My hometown is vibrant and diverse...', 'I recently traveled to the mountains...'],
     },
   };
 
   useEffect(() => {
-    if (student) {
-      const fetchEnrollments = async () => {
-        try {
-          const response = await axios.get(`${apiUrl}/enrollment`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            params: { userId: student._id },
-          });
-          setEnrollments(response.data.enrollments);
-        } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to fetch enrollments");
-        }
-      };
+    const fetchStudent = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/user/${studentId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        setStudent(response.data.user);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to fetch student');
+      }
+    };
+
+    const fetchEnrollments = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/enrollment`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          params: { userId: studentId },
+        });
+        setEnrollments(response.data.enrollments);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to fetch enrollments');
+      }
+    };
+
+    if (studentId) {
+      fetchStudent();
       fetchEnrollments();
     }
-  }, [student]);
+  }, [studentId]);
 
-  if (!open || !student) return null;
+  if (!student) {
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div className="bg-white border-2 border-gray-300 shadow-2xl rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-8">
+          <p className="text-red-500">Student not found.</p>
+          <button
+            onClick={() => navigate('/students/registered')}
+            className="mt-4 px-4 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700 transition"
+          >
+            Back to Registered Students
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const address = student.address || `${student.city || "New York"}, NY, USA`;
-  const profilePhoto = student.profilePhoto || "https://via.placeholder.com/120";
+  const address = student.address || `${student.city || 'New York'}, NY, USA`;
+  const profilePhoto = student.profilePhoto || 'N/A';
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -61,7 +92,7 @@ const ProfileDialog = ({ open, onClose, student }) => {
               className="w-32 h-32 rounded-full border-2 border-gray-200 shadow-md object-cover"
             />
             <button
-              onClick={onClose}
+              onClick={() => navigate('/students/registered')}
               className="text-gray-600 hover:bg-gray-100 rounded-full p-2.5 transition-colors"
               aria-label="Close profile dialog"
             >
@@ -84,10 +115,10 @@ const ProfileDialog = ({ open, onClose, student }) => {
                 <div className="space-y-3 text-sm text-gray-700">
                   <p><strong>Full Name:</strong> {student.name}</p>
                   <p><strong>Email Address:</strong> {student.email}</p>
-                  <p><strong>Phone Number:</strong> {student.phone || "Not provided"}</p>
-                  <p><strong>Date of Birth:</strong> {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "Not provided"}</p>
+                  <p><strong>Phone Number:</strong> {student.phone || 'Not provided'}</p>
+                  <p><strong>Date of Birth:</strong> {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
                   <p><strong>Address:</strong> {address}</p>
-                  <p><strong>University:</strong> {student.university || "Not provided"}</p>
+                  <p><strong>University:</strong> {student.university || 'Not provided'}</p>
                 </div>
               </div>
               <div>
@@ -98,7 +129,7 @@ const ProfileDialog = ({ open, onClose, student }) => {
                     {enrollments.length > 0 ? (
                       <ul className="list-disc pl-5 mt-1">
                         {enrollments.map((enroll, i) => (
-                          <li key={i}>{enroll.courseId?.title || "Unknown Course"}</li>
+                          <li key={i}>{enroll.courseId?.title || 'Unknown Course'}</li>
                         ))}
                       </ul>
                     ) : (
@@ -115,9 +146,9 @@ const ProfileDialog = ({ open, onClose, student }) => {
                             className="flex justify-between items-center border border-gray-200 p-3 rounded bg-white shadow-sm"
                           >
                             <div>
-                              <p className="font-medium">{testReviews[test.id]?.name || "Unknown Test"}</p>
-                              <p>Score: {test.score || "N/A"}</p>
-                              <p>Date: {test.date ? new Date(test.date).toLocaleDateString() : "N/A"}</p>
+                              <p className="font-medium">{testReviews[test.id]?.name || 'Unknown Test'}</p>
+                              <p>Score: {test.score || 'N/A'}</p>
+                              <p>Date: {test.date ? new Date(test.date).toLocaleDateString() : 'N/A'}</p>
                             </div>
                             <button
                               onClick={() => setReviewTestId(test.id)}

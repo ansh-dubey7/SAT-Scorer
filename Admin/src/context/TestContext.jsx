@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
@@ -14,7 +14,7 @@ export const TestProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       setCoursesLoading(true);
       const response = await axios.get('http://localhost:5000/api/course', {
@@ -29,9 +29,9 @@ export const TestProvider = ({ children }) => {
     } finally {
       setCoursesLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchTests = async () => {
+  const fetchTests = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/test', {
         headers: { Authorization: `Bearer ${token}` },
@@ -42,7 +42,7 @@ export const TestProvider = ({ children }) => {
       setError(err.response?.data?.message || 'Failed to fetch tests');
       console.error('Fetch tests error:', err.message, err.response?.data);
     }
-  };
+  }, [token]);
 
   const updateTest = async (testId, testData) => {
     try {
@@ -61,6 +61,7 @@ export const TestProvider = ({ children }) => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!token) return;
       try {
         setLoading(true);
         await Promise.all([fetchCourses(), fetchTests()]);
@@ -71,11 +72,9 @@ export const TestProvider = ({ children }) => {
         setLoading(false);
       }
     };
-    if (token) {
-      console.log('Fetching data with token:', token ? 'present' : 'missing');
-      fetchData();
-    }
-  }, [token]);
+    console.log('Fetching data with token:', token ? 'present' : 'missing');
+    fetchData();
+  }, [token, fetchCourses, fetchTests]);
 
   const createQuestion = async (questionData) => {
     try {

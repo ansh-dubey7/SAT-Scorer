@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { toast } from 'react-toastify';
 import { TestContext } from '../../context/TestContext';
+import { useNavigate } from 'react-router-dom';
 import QuestionBuilder from './QuestionBuilder';
 import PreviewTest from './PreviewTest';
 
@@ -10,6 +11,7 @@ const AddQuestions = () => {
   const [questions, setQuestions] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
   // Filter tests to show only those with zero questions
   const availableTests = tests.filter((test) => (test.questions || []).length === 0);
@@ -94,6 +96,7 @@ const AddQuestions = () => {
       setQuestions([]);
       setSelectedTest('');
       setErrors({});
+      navigate('/tests/create/details');
     } catch (err) {
       toast.error(err.message || 'Failed to save questions');
     }

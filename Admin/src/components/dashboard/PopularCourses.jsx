@@ -43,7 +43,7 @@ const PopularCourses = () => {
           ))}
         </tbody>
       </table>
-      <Link to="/courses" className="text-blue-500 hover:underline mt-4 block">
+      <Link to="/courses/manage" className="text-blue-500 hover:underline mt-4 block">
         View All
       </Link>
     </div>

@@ -2,9 +2,10 @@ import React, { useState, useContext } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { TestContext } from '../../context/TestContext';
+import { useNavigate } from 'react-router-dom';
 import TestHeader from './TestHeader';
 
-const TestDetailsForm = ({ setActiveSubTab }) => {
+const TestDetailsForm = () => {
   const { courses, examTypes, testTypes, fetchTests } = useContext(TestContext);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [testType, setTestType] = useState('');
@@ -15,6 +16,7 @@ const TestDetailsForm = ({ setActiveSubTab }) => {
   const [attempts, setAttempts] = useState(1);
   const [markingScheme, setMarkingScheme] = useState('');
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
   const validateDetails = () => {
     const newErrors = {};
@@ -52,8 +54,11 @@ const TestDetailsForm = ({ setActiveSubTab }) => {
       });
       toast.success(`${title} saved as ${status}!`);
       await fetchTests();
-      setActiveSubTab('questions');
-      resetForm();
+      if (status === 'published') {
+        navigate('/tests/create/questions');
+      } else {
+        resetForm();
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save test');
     }

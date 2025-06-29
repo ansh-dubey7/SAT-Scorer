@@ -2,16 +2,15 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { TestContext } from '../../context/TestContext';
-import EditTestDrawer from './EditTestDrawer';
+import { useNavigate, Outlet } from 'react-router-dom';
 
 const ManageTests = () => {
   const { tests, courses, coursesLoading, fetchCourses, fetchTests } = useContext(TestContext);
   const [filteredTests, setFilteredTests] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
-  const [selectedTest, setSelectedTest] = useState(null);
-  const [showDrawer, setShowDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!coursesLoading && courses.length === 0) {
@@ -26,10 +25,9 @@ const ManageTests = () => {
         test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         test.examType.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCourse = filterCourse === '' || test.courseId.toString() === filterCourse;
-      console.log(`Test ${test._id}: courseId=${test.courseId}, matchesCourse=${matchesCourse}`);
+      
       return matchesSearch && matchesCourse;
     });
-    console.log('Filtered tests:', filtered.map(t => ({ _id: t._id, title: t.title, courseId: t.courseId })));
     setFilteredTests(filtered);
   }, [searchTerm, filterCourse, tests, courses]);
 
@@ -51,8 +49,7 @@ const ManageTests = () => {
   };
 
   const handleEdit = (test) => {
-    setSelectedTest(test);
-    setShowDrawer(true);
+    navigate(`/tests/manage/${test._id}/edit`);
   };
 
   const handleUpdate = async (updatedTest) => {
@@ -63,14 +60,12 @@ const ManageTests = () => {
     setFilteredTests(
       filteredTests.map((test) => (test._id === updatedTest._id ? { ...test, ...updatedTest } : test))
     );
-    setShowDrawer(false);
-    setSelectedTest(null);
-    console.log('Test updated, refetching tests and courses');
     await Promise.all([fetchCourses(), fetchTests()]);
+    navigate('/tests/manage');
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-white p-6 Rounded-lg shadow-lg border border-gray-200">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6">Manage Tests</h2>
       <div className="flex flex-col sm:flex-row sm:space-x-4 mb-6">
         <div className="relative flex-grow mb-4 sm:mb-0">
@@ -201,18 +196,9 @@ const ManageTests = () => {
           </table>
         )}
       </div>
-      {showDrawer && selectedTest && (
-        <div className="w-full mt-6">
-          <EditTestDrawer
-            test={selectedTest}
-            onClose={() => setShowDrawer(false)}
-            onUpdate={handleUpdate}
-          />
-        </div>
-      )}
+      <Outlet />
     </div>
   );
 };
 
 export default ManageTests;
-

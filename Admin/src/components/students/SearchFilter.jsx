@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 const SearchFilter = ({
   searchQuery,
@@ -52,4 +52,3 @@ const SearchFilter = ({
 };
 
 export default SearchFilter;
-

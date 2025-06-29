@@ -6,13 +6,16 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx';
 import { TestProvider } from './context/TestContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx'
+import { CourseProvider } from './context/CourseContext.jsx';
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <AuthProvider>
       <NotificationProvider>
-        <TestProvider>  
-          <App />
-        </TestProvider>
+        <CourseProvider>
+          <TestProvider>  
+            <App />
+          </TestProvider>
+        </CourseProvider>
       </NotificationProvider>
     </AuthProvider>  
   </BrowserRouter>
