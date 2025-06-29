@@ -19,6 +19,7 @@ import notificationRouter from './routes/notificationRoutes.js';
 import emailRouter from './routes/emailRoutes.js';
 import feedbackRouter from './routes/feedbackRoutes.js';
 import supportRouter from './routes/supportRoutes.js';
+import otpRouter from './routes/otpRoutes.js';
 import './models/UserModel.js';
 import './models/CourseModel.js';
 import './models/EnrollmentModel.js';
@@ -32,6 +33,7 @@ import './models/VideoModel.js';
 import './models/NotesModel.js';
 import './models/LiveSessionModel.js';
 import './models/QuestionModel.js';
+import './models/OtpModel.js';
 import { scheduleNotifications } from './utils/scheduleNotifications.js';
 
 dotenv.config();
@@ -79,6 +81,7 @@ app.use('/api/notification', notificationRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/support', supportRouter);
+app.use('/api/otp', otpRouter);
 
 // Image Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {

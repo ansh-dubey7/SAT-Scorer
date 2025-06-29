@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 
-const EditSessionDialog = ({ session, courses, onClose, onUpdate }) => {
+const EditSessionDialog = () => {
   const { token } = useAuth();
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+  const { courses, sessions, setSessions } = useOutletContext();
   const [formData, setFormData] = useState({
-    courseId: session.courseId?._id || session.courseId || '',
-    title: session.title || '',
-    description: session.description || '',
-    date: new Date(session.scheduledAt).toISOString().split('T')[0] || '',
-    time: new Date(session.scheduledAt).toTimeString().slice(0, 5) || '',
-    platform: ['Google Meet', 'Zoom', 'Microsoft Teams'].includes(session.platform) ? session.platform : 'Other',
-    customPlatform: ['Google Meet', 'Zoom', 'Microsoft Teams'].includes(session.platform) ? '' : session.platform,
-    link: session.link || '',
+    courseId: '',
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    platform: '',
+    customPlatform: '',
+    link: '',
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
+
+  useEffect(() => {
+    const session = sessions.find((s) => s._id === sessionId);
+    if (session) {
+      setFormData({
+        courseId: session.courseId?._id || session.courseId || '',
+        title: session.title || '',
+        description: session.description || '',
+        date: new Date(session.scheduledAt).toISOString().split('T')[0] || '',
+        time: new Date(session.scheduledAt).toTimeString().slice(0, 5) || '',
+        platform: ['Google Meet', 'Zoom', 'Microsoft Teams'].includes(session.platform) ? session.platform : 'Other',
+        customPlatform: ['Google Meet', 'Zoom', 'Microsoft Teams'].includes(session.platform) ? '' : session.platform,
+        link: session.link || '',
+      });
+      setSessionNotFound(false);
+    } else {
+      console.warn('Session not found for ID:', sessionId);
+      setSessionNotFound(true);
+    }
+  }, [sessionId, sessions]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -69,13 +94,13 @@ const EditSessionDialog = ({ session, courses, onClose, onUpdate }) => {
         link: formData.link,
       };
       const response = await axios.put(
-        `http://localhost:5000/api/livesession/${session._id}`,
+        `http://localhost:5000/api/livesession/${sessionId}`,
         sessionData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      onUpdate(response.data.session);
+      setSessions(sessions.map((s) => (s._id === sessionId ? response.data.session : s)));
       toast.success('Session updated successfully!');
-      onClose();
+      navigate('/live/manage');
     } catch (error) {
       const errorMsg = error.response?.data?.fields
         ? Object.values(error.response.data.fields).filter(Boolean).join(', ')
@@ -86,13 +111,36 @@ const EditSessionDialog = ({ session, courses, onClose, onUpdate }) => {
     }
   };
 
+  const handleClose = () => {
+    navigate('/live/manage');
+  };
+
+  if (sessionNotFound) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] border-2 border-red-500">
+        <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Session Not Found</h2>
+          <p className="text-gray-600 mb-4">The session you are trying to edit does not exist.</p>
+          <div className="flex justify-end">
+            <button
+              onClick={handleClose}
+              className="px-4 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+            >
+              Back to Manage Sessions
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10] border-2">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Edit Live Session</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
             disabled={isSubmitting}
           >
@@ -119,7 +167,7 @@ const EditSessionDialog = ({ session, courses, onClose, onUpdate }) => {
                 disabled={isSubmitting}
               >
                 <option value="">Select Course</option>
-                {courses.map((course) => (
+                {courses && courses.map((course) => (
                   <option key={course._id} value={course._id}>
                     {course.title}
                   </option>
@@ -217,7 +265,7 @@ const EditSessionDialog = ({ session, courses, onClose, onUpdate }) => {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-1.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 text-sm"
               disabled={isSubmitting}
             >

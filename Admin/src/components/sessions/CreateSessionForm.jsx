@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { useOutletContext } from 'react-router-dom';
 
-const CreateSessionForm = ({ courses, setSessions, sessions }) => {
+const CreateSessionForm = () => {
+  const { token } = useAuth();
+  const { courses, sessions, setSessions } = useOutletContext();
   const [formData, setFormData] = useState({
     courseId: '',
     title: '',
@@ -15,8 +18,7 @@ const CreateSessionForm = ({ courses, setSessions, sessions }) => {
     link: '',
   });
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false); // Added loading state
-  const { token } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,7 +64,7 @@ const CreateSessionForm = ({ courses, setSessions, sessions }) => {
       return;
     }
 
-    setIsSubmitting(true); // Set loading state
+    setIsSubmitting(true);
     const sessionData = {
       courseId: formData.courseId,
       title: formData.title,
@@ -95,7 +97,7 @@ const CreateSessionForm = ({ courses, setSessions, sessions }) => {
         : error.response?.data?.message || error.message;
       toast.error(`Failed to create session: ${errorMsg}`);
     } finally {
-      setIsSubmitting(false); // Reset loading state
+      setIsSubmitting(false);
     }
   };
 
@@ -121,7 +123,7 @@ const CreateSessionForm = ({ courses, setSessions, sessions }) => {
               disabled={isSubmitting}
             >
               <option value="">Select Course</option>
-              {courses.map((course) => (
+              {courses && courses.map((course) => (
                 <option key={course._id} value={course._id}>
                   {course.title}
                 </option>
@@ -243,4 +245,3 @@ const CreateSessionForm = ({ courses, setSessions, sessions }) => {
 };
 
 export default CreateSessionForm;
-

@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
-import EditSessionDialog from './EditSessionDialog';
+import { useNavigate, useOutletContext, Outlet } from 'react-router-dom';
 
-const ManageSessions = ({ sessions, courses, setSessions }) => {
+const ManageSessions = () => {
   const { token } = useAuth();
+  const { courses, sessions, setSessions } = useOutletContext();
   const [filteredSessions, setFilteredSessions] = useState(sessions);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [showDialog, setShowDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const filtered = sessions.filter((session) => {
@@ -49,20 +49,12 @@ const ManageSessions = ({ sessions, courses, setSessions }) => {
   };
 
   const handleEdit = (session) => {
-    setSelectedSession(session);
-    setShowDialog(true);
-  };
-
-  const handleUpdate = (updatedSession) => {
-    setSessions(sessions.map((s) => (s._id === updatedSession._id ? updatedSession : s)));
-    setShowDialog(false);
-    setSelectedSession(null);
-    toast.success('Session updated successfully!');
+    navigate(`/live/manage/${session._id}/edit`);
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-teal-800">Manage Live Sessions</h2>
+    <div className="space-y-6 relative">
+      <h2 className="text-2xl font-semibold text-gray-800">Manage Live Sessions</h2>
       <div className="flex flex-col sm:flex-row sm:space-x-4 mb-6">
         <div className="relative flex-grow mb-4 sm:mb-0">
           <input
@@ -95,7 +87,7 @@ const ManageSessions = ({ sessions, courses, setSessions }) => {
           disabled={isLoading}
         >
           <option value="">All Courses</option>
-          {courses.map((course) => (
+          {courses && courses.map((course) => (
             <option key={course._id} value={course._id}>
               {course.title}
             </option>
@@ -202,17 +194,9 @@ const ManageSessions = ({ sessions, courses, setSessions }) => {
           </table>
         )}
       </div>
-      {showDialog && selectedSession && (
-        <EditSessionDialog
-          session={selectedSession}
-          courses={courses}
-          onClose={() => setShowDialog(false)}
-          onUpdate={handleUpdate}
-        />
-      )}
+      <Outlet context={{ courses, sessions, setSessions }} />
     </div>
   );
 };
 
 export default ManageSessions;
-

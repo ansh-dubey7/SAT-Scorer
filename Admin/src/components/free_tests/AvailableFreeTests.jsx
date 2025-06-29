@@ -1,7 +1,11 @@
 import React from 'react';
+import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useOutletContext } from 'react-router-dom';
 
-const AvailableFreeTests = ({ tests, setTests, courses, loading, error }) => {
+const AvailableFreeTests = () => {
+  const { tests, setTests, courses, loading, error } = useOutletContext();
+
   const handleMarkPaid = async (test) => {
     try {
       const response = await axios.put(

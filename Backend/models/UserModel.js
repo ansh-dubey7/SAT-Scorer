@@ -29,6 +29,7 @@ const UserSchema = new mongoose.Schema({
   support: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Support' }],
   tests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TestResult' }],
   payments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payment' }],
+  otps: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Otp' }],
 }, { timestamps: true });
 
 UserSchema.index({ status: 1 });

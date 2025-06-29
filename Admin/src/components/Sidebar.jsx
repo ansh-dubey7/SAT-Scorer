@@ -16,7 +16,6 @@ const Sidebar = () => {
     { name: 'Free Test Access', path: '/free-tests', icon: assets.test_management_icon },
     { name: 'Announcements', path: '/announcements', icon: assets.announcements_icon },
     { name: 'Support and Feedback', path: '/support', icon: assets.support_and_feedback_icon },
-    { name: 'Settings', path: '/settings', icon: assets.settings_icon },
   ];
 
   return (

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useOutletContext } from 'react-router-dom';
 
-const ManageFreePaidTests = ({ tests, setTests, courses, loading, error }) => {
+const ManageFreePaidTests = () => {
+  const { tests, setTests, courses, loading, error } = useOutletContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
   const [isLoading, setIsLoading] = useState(false);

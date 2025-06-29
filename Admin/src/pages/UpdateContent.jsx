@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import UpdateCourseContentForm from '../components/content/UpdateCourseContentForm';
+import { useNavigate } from 'react-router-dom';
 
 const UpdateContent = () => {
   const { token } = useAuth();
@@ -11,6 +12,8 @@ const UpdateContent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [examFilter, setExamFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -38,6 +41,12 @@ const UpdateContent = () => {
 
   const handleSelectCourse = (course) => {
     setSelectedCourse(course);
+    navigate(`/content/${course._id}/updatecontent`);
+  };
+
+  const handleBackToCourses = () => {
+    setSelectedCourse(null);
+    navigate('/content');
   };
 
   return (
@@ -54,10 +63,10 @@ const UpdateContent = () => {
                 Updating Content for: {selectedCourse.title}
               </h2>
               <button
-                onClick={() => setSelectedCourse(null)}
+                onClick={handleBackToCourses}
                 className="px-6 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors duration-200"
               >
-               &lt;&nbsp;Back to Courses
+               &lt; Back to Courses
               </button>
             </div>
             <UpdateCourseContentForm course={selectedCourse} />
@@ -181,4 +190,3 @@ const UpdateContent = () => {
 };
 
 export default UpdateContent;
-

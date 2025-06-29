@@ -21,11 +21,18 @@ import EnrolledStudents from './components/students/EnrolledStudents';
 import ProfileDialog from './components/students/ProfileDialog';
 import SalesAndPayments from './pages/SalesAndPayments';
 import UpdateContent from './pages/UpdateContent';
+import UpdateCourseContentForm from './components/content/UpdateCourseContentForm';
 import LiveSessions from './pages/LiveSessions';
+import CreateSessionForm from './components/sessions/CreateSessionForm';
+import ManageSessions from './components/sessions/ManageSessions';
+import EditSessionDialog from './components/sessions/EditSessionDialog';
 import FreeTestAccess from './pages/FreeTestAccess';
+import AvailableFreeTests from './components/free_tests/AvailableFreeTests';
+import ManageFreePaidTests from './components/free_tests/ManageFreePaidTests';
 import Announcements from './pages/Announcement';
+import CreateAnnouncement from './components/announcement/CreateAnnouncement';
+import ManageAnnouncement from './components/announcement/ManageAnnouncement';
 import SupportAndFeedback from './pages/SupportAndFeedback';
-import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import { ToastContainer, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -57,7 +64,7 @@ const App = () => {
         pauseOnHover
         theme="dark"
         transition={Slide}
-        style={{ width: '350px', fontFamily: 'Arial, sans-serif' }}
+        style={{ width: '350px', fontFamily: 'Arial, sans-serif'}}
         className="custom-toast-container"
       />
       <Routes>
@@ -94,13 +101,33 @@ const App = () => {
             <Route path="enrollments" element={<EnrolledStudents />} />
           </Route>
 
+          <Route path="content" element={<ProtectedRoute><UpdateContent /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/content" replace />} />
+            <Route path=":courseId/updatecontent" element={<UpdateCourseContentForm />} />
+          </Route>
+
+          <Route path="live" element={<ProtectedRoute><LiveSessions /></ProtectedRoute>}>
+            <Route index element={<Navigate to="create" replace />} />
+            <Route path="create" element={<CreateSessionForm />} />
+            <Route path="manage" element={<ManageSessions />}>
+              <Route path=":sessionId/edit" element={<EditSessionDialog />} />
+            </Route>
+          </Route>
+
+          <Route path="free-tests" element={<ProtectedRoute><FreeTestAccess /></ProtectedRoute>}>
+            <Route index element={<Navigate to="available" replace />} />
+            <Route path="available" element={<AvailableFreeTests />} />
+            <Route path="manage" element={<ManageFreePaidTests />} />
+          </Route>
+
+          <Route path="announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>}>
+            <Route index element={<Navigate to="creates" replace />} />
+            <Route path="creates" element={<CreateAnnouncement />} />
+            <Route path="manage" element={<ManageAnnouncement />} />
+          </Route>
+
           <Route path="sales" element={<ProtectedRoute><SalesAndPayments /></ProtectedRoute>} />
-          <Route path="content" element={<ProtectedRoute><UpdateContent /></ProtectedRoute>} />
-          <Route path="live" element={<ProtectedRoute><LiveSessions /></ProtectedRoute>} />
-          <Route path="free-tests" element={<ProtectedRoute><FreeTestAccess /></ProtectedRoute>} />
-          <Route path="announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
           <Route path="support" element={<ProtectedRoute><SupportAndFeedback /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         </Route>
       </Routes>
     </>
