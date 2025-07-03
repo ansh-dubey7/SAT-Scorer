@@ -1,70 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { toast } from 'react-toastify';
 import SearchFilter from './SearchFilter';
 
 const EnrolledStudents = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [examFilter, setExamFilter] = useState('');
+  const [enrollments, setEnrollments] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const exams = ['GRE', 'GMAT', 'IELTS', 'SAT', 'ACT', 'AP'];
+  const apiUrl = 'http://localhost:5000/api';
 
-  const mockEnrollments = [
-    {
-      _id: '1',
-      userId: { name: 'John Doe', email: 'john@example.com' },
-      courseId: { title: 'GRE Prep Course', examType: 'GRE' },
-      enrolledAt: new Date('2025-01-01'),
-      endDate: new Date('2025-06-30'),
-      status: 'active',
-    },
-    {
-      _id: '2',
-      userId: { name: 'Jane Smith', email: 'jane@example.com' },
-      courseId: { title: 'IELTS Intensive', examType: 'IELTS' },
-      enrolledAt: new Date('2025-02-01'),
-      endDate: new Date('2025-07-31'),
-      status: 'active',
-    },
-    {
-      _id: '3',
-      userId: { name: 'Bob Johnson', email: 'bob@example.com' },
-      courseId: { title: 'SAT Prep Course', examType: 'SAT' },
-      enrolledAt: new Date('2025-03-01'),
-      endDate: new Date('2025-08-31'),
-      status: 'expired',
-    },
-  ];
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get(`${apiUrl}/enrollment`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        setEnrollments(response.data.enrollments || []);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to fetch enrollments');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEnrollments();
+  }, []);
 
-  const [enrollments, setEnrollments] = useState(mockEnrollments);
-
-  const toggleEnrollmentStatus = (id) => {
+  const toggleEnrollmentStatus = async (id, studentName, studentEmail, courseTitle) => {
     try {
+      const enrollment = enrollments.find((e) => e._id === id);
+      const newStatus = enrollment.status === 'active' ? 'expired' : 'active';
+      const confirmMessage = `Are you sure you want to ${
+        newStatus === 'expired' ? 'expire' : 'activate'
+      } the course "${courseTitle}" for ${studentName} (${studentEmail})? ${
+        newStatus === 'expired'
+          ? 'The student will remain enrolled but cannot access course content (tests, videos, notes, and live sessions).'
+          : ''
+      }`;
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      await axios.put(
+        `${apiUrl}/enrollment/${id}`,
+        { status: newStatus },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      
       setEnrollments((prev) =>
         prev.map((e) =>
           e._id === id
-            ? { ...e, status: e.status === 'active' ? 'expired' : 'active' }
+            ? { ...e, status: newStatus }
             : e
         )
       );
       toast.success(
-        `Enrollment status updated to ${
-          enrollments.find((e) => e._id === id).status === 'active'
-            ? 'expired'
-            : 'active'
-        }`
+        `Enrollment status for ${studentName} updated to ${newStatus}`
       );
     } catch (error) {
-      toast.error('Failed to update enrollment status');
+      toast.error(error.response?.data?.message || 'Failed to update enrollment status');
     }
   };
 
   const filteredEnrollments = enrollments.filter(
     (enrollment) =>
-      (!examFilter || enrollment.courseId.examType === examFilter) &&
+      (!examFilter || enrollment.courseId?.examType === examFilter) &&
       (!searchQuery ||
-        enrollment.userId.name
+        enrollment.userId?.name
           .toLowerCase()
           .includes(searchQuery.toLowerCase()) ||
-        enrollment.userId.email
+        enrollment.userId?.email
           .toLowerCase()
           .includes(searchQuery.toLowerCase()))
   );
@@ -81,7 +89,9 @@ const EnrolledStudents = () => {
         showExamFilter={true}
       />
       <div className="overflow-x-auto">
-        {filteredEnrollments.length === 0 ? (
+        {isLoading ? (
+          <p className="text-gray-600 text-center">Loading enrollments...</p>
+        ) : filteredEnrollments.length === 0 ? (
           <p className="text-gray-600 text-center">No enrollments found.</p>
         ) : (
           <table className="w-full border border-gray-200 rounded-lg shadow-sm">
@@ -101,13 +111,15 @@ const EnrolledStudents = () => {
                   key={enrollment._id}
                   className="border-t border-gray-200 hover:bg-gray-50 transition-colors"
                 >
-                  <td className="p-4 text-gray-800">{enrollment.userId.name}</td>
-                  <td className="p-4 text-gray-800">{enrollment.courseId.title}</td>
+                  <td className="p-4 text-gray-800">{enrollment.userId?.name || 'N/A'}</td>
+                  <td className="p-4 text-gray-800">{enrollment.courseId?.title || 'N/A'}</td>
                   <td className="p-4 text-gray-800">
                     {new Date(enrollment.enrolledAt).toLocaleDateString()}
                   </td>
                   <td className="p-4 text-gray-800">
-                    {new Date(enrollment.endDate).toLocaleDateString()}
+                    {enrollment.courseId?.endDate
+                      ? new Date(enrollment.courseId.endDate).toLocaleDateString()
+                      : 'N/A'}
                   </td>
                   <td className="p-4">
                     <span
@@ -123,12 +135,20 @@ const EnrolledStudents = () => {
                   </td>
                   <td className="p-4 flex space-x-2">
                     <button
-                      onClick={() => toggleEnrollmentStatus(enrollment._id)}
+                      onClick={() =>
+                        toggleEnrollmentStatus(
+                          enrollment._id,
+                          enrollment.userId?.name,
+                          enrollment.userId?.email,
+                          enrollment.courseId?.title
+                        )
+                      }
                       className={`${
                         enrollment.status === 'active'
                           ? 'text-red-600 hover:text-red-700'
                           : 'text-teal-600 hover:text-teal-700'
                       } font-semibold flex items-center space-x-1 transition-colors`}
+                      disabled={isLoading}
                     >
                       <svg
                         className="w-4 h-4"
@@ -148,9 +168,7 @@ const EnrolledStudents = () => {
                           }
                         />
                       </svg>
-                      <span>
-                        {enrollment.status === 'active' ? 'Expire' : 'Activate'}
-                      </span>
+                      <span>{enrollment.status === 'active' ? 'Expire' : 'Activate'}</span>
                     </button>
                   </td>
                 </tr>

@@ -33,6 +33,26 @@ const MyProfile = () => {
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+    const fetchUserProfile = async () => {
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    try {
+      const response = await fetchProtected('http://localhost:5000/api/user/profile', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch user profile');
+      }
+      return data.user;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       setLoading(true);

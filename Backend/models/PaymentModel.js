@@ -7,7 +7,17 @@ const PaymentSchema = new mongoose.Schema(
     amount: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'completed', 'failed'], required: true },
     paymentDate: { type: Date },
-    cashfreeOrderId: { type: String }, // Add Cashfree order ID
+    cashfreeOrderId: { type: String, required: true },
+    transactionId: { type: String },
+    paymentMethod: { type: String },
+    invoiceDetails: {
+      invoiceNumber: { type: String },
+      coursePrice: { type: String },
+      tax: { type: String },
+      total: { type: String },
+      purchaseDate: { type: String },
+      studentName: { type: String },
+    },
   },
   { timestamps: true }
 );

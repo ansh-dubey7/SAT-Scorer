@@ -19,14 +19,20 @@ oauth2Client.scopes = [
 
 const getAccessToken = async () => {
   try {
+    // Force refresh to get a new access token
     const { token } = await oauth2Client.getAccessToken();
     if (!token) {
-      throw new Error('Failed to retrieve access token');
+      throw new Error('Failed to retrieve access token: No token returned');
     }
+    console.log('Access token retrieved successfully');
     return token;
   } catch (error) {
-    console.error('Error getting access token:', error);
-    throw error;
+    console.error('Error getting access token:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+    });
+    throw new Error(`Failed to get access token: ${error.message}`);
   }
 };
 

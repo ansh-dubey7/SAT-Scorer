@@ -18,7 +18,7 @@ const getNotesForACourse = async (req, res) => {
         }
 
         const notes = await NotesModel
-            .find({ courseId })
+            .find({ courseId, status: 'published' })
             .populate('courseId', 'title examType');
 
         if (!notes || notes.length === 0) {
@@ -44,7 +44,7 @@ const createNotes = async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admin privileges required' });
         }
 
-        const { courseId, title, link } = req.body;
+        const { courseId, title, link, content } = req.body;
 
         // Validate required fields
         if (!courseId || !title || !link) {
@@ -72,7 +72,9 @@ const createNotes = async (req, res) => {
         const note = new NotesModel({
             courseId,
             title,
-            link
+            link,
+            content,
+            status: 'draft'
         });
 
         await note.save();
@@ -135,7 +137,7 @@ const updateNotes = async (req, res) => {
             return res.status(400).json({ message: 'Request body is required' });
         }
 
-        const { courseId, title, link } = req.body;
+        const { courseId, title, link, content, status } = req.body;
 
         // Prepare update object
         const updateData = {};
@@ -157,6 +159,13 @@ const updateNotes = async (req, res) => {
             }
             updateData.link = link;
         }
+        if (content !== undefined) updateData.content = content;
+        if (status) {
+            if (!['draft', 'published'].includes(status)) {
+                return res.status(400).json({ message: 'Invalid status' });
+            }
+            updateData.status = status;
+        }
 
         const note = await NotesModel
             .findByIdAndUpdate(
@@ -172,8 +181,8 @@ const updateNotes = async (req, res) => {
 
         // If courseId changed, update the notes array in both old and new courses
         if (courseId && note.courseId.toString() !== courseId) {
-            await CourseModel.findByIdAndUpdate(courseId, { $push: { notes: note._id } });
             await CourseModel.findByIdAndUpdate(note.courseId, { $pull: { notes: note._id } });
+            await CourseModel.findByIdAndUpdate(courseId, { $push: { notes: note._id } });
         }
 
         res.status(200).json({

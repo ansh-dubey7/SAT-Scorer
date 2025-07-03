@@ -1,48 +1,19 @@
-import React from 'react';
+// import React from 'react';
 
-const CourseTabs = ({ activeTab, setActiveTab, tabs }) => {
-  return (
-    <div className="flex gap-4 mb-6 border-b border-gray-200">
-      {tabs.map((tab) => (
-        <button
-          key={tab}
-          onClick={() => setActiveTab(tab)}
-          className={`pb-2 px-4 text-sm font-medium ${
-            activeTab === tab
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-blue-600'
-          }`}
-        >
-          {tab === 'overview' ? 'Overview' : tab === 'lectures' ? 'Lectures' : 'Study Materials'}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-export default CourseTabs;
-
-
-
-
-
-// import React from "react";
-
-// const CourseTabs = ({ activeTab, setActiveTab }) => {
+// const CourseTabs = ({ activeTab, setActiveTab, tabs }) => {
 //   return (
 //     <div className="flex gap-4 mb-6 border-b border-gray-200">
-//       {["lectures", "materials"].map((tab) => (
+//       {tabs.map((tab) => (
 //         <button
 //           key={tab}
 //           onClick={() => setActiveTab(tab)}
-//           className={`pb-2 px-1 text-sm font-medium transition-colors ${
+//           className={`pb-2 px-4 text-sm font-medium ${
 //             activeTab === tab
-//               ? "text-purple-600 border-b-2 border-purple-600"
-//               : "text-gray-600 hover:text-purple-600"
+//               ? 'text-blue-600 border-b-2 border-blue-600'
+//               : 'text-gray-600 hover:text-blue-600'
 //           }`}
-//           aria-selected={activeTab === tab}
 //         >
-//           {tab === "lectures" ? "📚 Lectures" : "📜 Study Materials"}
+//           {tab === 'overview' ? 'Overview' : tab === 'lectures' ? 'Lectures' : 'Study Materials'}
 //         </button>
 //       ))}
 //     </div>
@@ -55,4 +26,54 @@ export default CourseTabs;
 
 
 
- 
+// // import React from "react";
+
+// // const CourseTabs = ({ activeTab, setActiveTab }) => {
+// //   return (
+// //     <div className="flex gap-4 mb-6 border-b border-gray-200">
+// //       {["lectures", "materials"].map((tab) => (
+// //         <button
+// //           key={tab}
+// //           onClick={() => setActiveTab(tab)}
+// //           className={`pb-2 px-1 text-sm font-medium transition-colors ${
+// //             activeTab === tab
+// //               ? "text-purple-600 border-b-2 border-purple-600"
+// //               : "text-gray-600 hover:text-purple-600"
+// //           }`}
+// //           aria-selected={activeTab === tab}
+// //         >
+// //           {tab === "lectures" ? "📚 Lectures" : "📜 Study Materials"}
+// //         </button>
+// //       ))}
+// //     </div>
+// //   );
+// // };
+
+// // export default CourseTabs;
+
+
+
+
+
+ // Student/components/viewcourse/CourseTabs.jsx
+import React from 'react';
+
+const CourseTabs = ({ activeTab, setActiveTab, tabs }) => {
+  return (
+    <div className="flex space-x-4 mb-6">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-4 py-2 rounded-md font-medium capitalize ${
+            activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export default CourseTabs;

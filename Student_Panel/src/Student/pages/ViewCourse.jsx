@@ -4,7 +4,7 @@ import BackButton from '../components/viewcourse/BackButton';
 import CourseTabs from '../components/viewcourse/CourseTabs';
 import CourseContentList from '../components/viewcourse/CourseContentList';
 import VideoModal from '../components/viewcourse/VideoModal';
-import { fetchCourseById } from '../../Data/api';
+import useApi from '../Data/api';
 
 const ViewCourse = () => {
   const { id } = useParams();
@@ -13,34 +13,95 @@ const ViewCourse = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasError, setHasError] = useState(false);
+  const { fetchCourseById } = useApi();
+
+  const loadCourse = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setHasError(false);
+      const data = await fetchCourseById(id);
+      const transformedCourse = {
+        id: data._id,
+        title: data.title,
+        examType: data.examType,
+        startDate: data.startDate ? new Date(data.startDate).toLocaleDateString() : 'N/A',
+        endDate: data.endDate ? new Date(data.endDate).toLocaleDateString() : 'N/A',
+        syllabus: data.about ? data.about.split('.').map(item => item.trim()).filter(item => item) : [],
+        mentor: { name: 'Unknown', bio: 'No bio available' },
+        modules: [
+          {
+            id: 'videos',
+            title: 'Videos',
+            items: (data.videos || []).map(video => ({
+              id: video._id,
+              title: video.title,
+              videoId: video.link,
+              type: 'video',
+            })),
+          },
+          {
+            id: 'notes',
+            title: 'Study Materials',
+            items: (data.notes || []).map(note => ({
+              id: note._id,
+              title: note.title,
+              fileUrl: note.link,
+              type: 'material',
+            })),
+          },
+          {
+            id: 'liveSessions',
+            title: 'Live Sessions',
+            items: (data.liveSessions || []).map(session => ({
+              id: session._id,
+              title: session.title,
+              link: session.link,
+              platform: session.platform,
+              scheduledAt: session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : 'N/A',
+              type: 'liveSession',
+            })),
+          },
+        ],
+      };
+      setCourse(transformedCourse);
+    } catch (err) {
+      setError(err.message || 'Failed to load course');
+      setHasError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadCourse = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchCourseById(id);
-        setCourse(data);
-      } catch (err) {
-        setError('Course not found');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCourse();
-  }, [id]);
+    if (!hasError) {
+      loadCourse();
+    }
+  }, [id, hasError]);
 
   if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
-  if (error) return <div className="p-6 text-red-600">{error}</div>;
+  if (error) return (
+    <div className="p-6 text-red-600">
+      <p>{error}</p>
+      <button
+        onClick={loadCourse}
+        className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+      >
+        Retry
+      </button>
+    </div>
+  );
   if (!course) return <div className="p-6 text-gray-600">Course not found.</div>;
 
   return (
     <div className="p-6">
-      <BackButton to="/studentdashboard/mycourses" label="Back to My Courses" />
+      {/* <BackButton to="/studentdashboard/mycourses" label="Back to My Courses" /> */}
       <h1 className="text-2xl font-bold mb-4 text-gray-800">{course.title}</h1>
       <CourseTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        tabs={['overview', 'lectures', 'materials']}
+        tabs={['overview', 'lectures', 'materials', 'liveSessions']}
       />
       {activeTab === 'overview' ? (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -58,11 +119,32 @@ const ViewCourse = () => {
           <p className="text-gray-600">{course.mentor?.bio}</p>
         </div>
       ) : (
-        <CourseContentList
-          modules={course.modules}
-          activeTab={activeTab}
-          onVideoSelect={setSelectedVideoId}
-        />
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          {course.modules
+            .filter(module => 
+              (activeTab === 'lectures' && module.id === 'videos') ||
+              (activeTab === 'materials' && module.id === 'notes') ||
+              (activeTab === 'liveSessions' && module.id === 'liveSessions')
+            )
+            .map(module => (
+              <div key={module.id} className="mb-6">
+                <h2 className="text-xl font-semibold mb-4">{module.title}</h2>
+                {module.id === 'liveSessions' && module.items.length === 0 ? (
+                  <p className="text-gray-600">No live sessions available.</p>
+                ) : module.items.length === 0 ? (
+                  <p className="text-gray-600">
+                    {module.id === 'videos' ? 'No videos available.' : 'No notes available.'}
+                  </p>
+                ) : (
+                  <CourseContentList
+                    modules={[module]}
+                    activeTab={activeTab}
+                    onVideoSelect={setSelectedVideoId}
+                  />
+                )}
+              </div>
+            ))}
+        </div>
       )}
       <VideoModal
         videoId={selectedVideoId}
@@ -73,142 +155,3 @@ const ViewCourse = () => {
 };
 
 export default ViewCourse;
-
-
-
-
-// import React, { useState } from "react";
-// import { useParams } from "react-router-dom";
-// import BackButton from "../components/viewcourse/BackButton";
-// import CourseTabs from "../components/viewcourse/CourseTabs";
-// import CourseContentList from "../components/viewcourse/CourseContentList";
-// import VideoModal from "../components/viewcourse/VideoModal";
-
-// // Mock data for courses (materials are empty, progress kept but not displayed)
-// const mockCourses = [
-//   {
-//     id: "1",
-//     thumbnail: "/assets/images/sat-thumb.jpg",
-//     title: "SAT Full Prep",
-//     examType: "SAT",
-//     startDate: "2025-06-01",
-//     endDate: "2025-08-31",
-//     progress: 60, // Kept in data but not displayed
-//     modules: [
-//       {
-//         title: "Module 1: Introduction",
-//         videos: [
-//           { title: "Welcome Video", id: "zZ6vybT1HQs", duration: "10 mins" },
-//           { title: "Test Overview", id: "dQw4w9WgXcQ", duration: "8 mins" }
-//         ],
-//         materials: [] // Empty as PDFs are not available
-//       },
-//       {
-//         title: "Module 2: Math Prep",
-//         videos: [
-//           { title: "Algebra Basics", id: "mZ3aRXlb7C8", duration: "12 mins" },
-//           { title: "Functions Deep Dive", id: "rVzLZIy1ybg", duration: "15 mins" }
-//         ],
-//         materials: [] // Empty as PDFs are not available
-//       }
-//     ]
-//   },
-//   {
-//     id: "2",
-//     thumbnail: "/assets/images/gre-thumb.jpg",
-//     title: "GRE Crash Course",
-//     examType: "GRE",
-//     startDate: "2025-07-01",
-//     endDate: "2025-09-15",
-//     progress: 30,
-//     modules: [
-//       {
-//         title: "Module 1: GRE Basics",
-//         videos: [
-//           { title: "GRE Intro", id: "a1b2c3d4e5f6", duration: "9 mins" },
-//           { title: "GRE Strategies", id: "g6h5i4j3k2l1", duration: "11 mins" }
-//         ],
-//         materials: [] // Empty as PDFs are not available
-//       }
-//     ]
-//   },
-//   {
-//     id: "3",
-//     thumbnail: "/assets/images/ielts-thumb.jpg",
-//     title: "IELTS Basics",
-//     examType: "IELTS",
-//     startDate: "2025-05-20",
-//     endDate: "2025-07-30",
-//     progress: 90,
-//     modules: [
-//       {
-//         title: "Module 1: IELTS Overview",
-//         videos: [
-//           { title: "IELTS Intro", id: "m1n2o3p4q5r6", duration: "7 mins" }
-//         ],
-//         materials: [] // Empty as PDFs are not available
-//       }
-//     ]
-//   },
-//   {
-//     id: "4",
-//     thumbnail: "/assets/images/sat-thumb.jpg",
-//     title: "SAT Foundation",
-//     examType: "SAT",
-//     startDate: "2025-06-10",
-//     endDate: "2025-08-01",
-//     progress: 40,
-//     modules: [
-//       {
-//         title: "Module 1: SAT Essentials",
-//         videos: [
-//           { title: "SAT Basics", id: "s1t2u3v4w5x6", duration: "10 mins" }
-//         ],
-//         materials: [] // Empty as PDFs are not available
-//       }
-//     ]
-//   }
-// ];
-
-// const ViewCourse = () => {
-//   const { id } = useParams();
-//   const [selectedVideoId, setSelectedVideoId] = useState(null);
-//   const [activeTab, setActiveTab] = useState("lectures");
-
-//   // Find the course by ID
-//   const course = mockCourses.find((c) => c.id === id);
-
-//   if (!course) {
-//     return <div className="p-6 text-gray-800">Course not found.</div>;
-//   }
-
-//   return (
-//     <div className="p-6">
-//       <BackButton />
-//       <h1 className="text-2xl font-bold mb-4 text-gray-800">
-//         Course Title: {course.title}
-//       </h1>
-
-//       <CourseTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-//       <CourseContentList
-//         modules={course.modules}
-//         activeTab={activeTab}
-//         onVideoSelect={setSelectedVideoId}
-//       />
-//       <VideoModal
-//         videoId={selectedVideoId}
-//         onClose={() => setSelectedVideoId(null)}
-//       />
-//     </div>
-//   );
-// };
-
-// export default ViewCourse;
-
-
-
-
-
-
-
- 

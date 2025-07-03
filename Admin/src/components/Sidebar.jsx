@@ -23,13 +23,15 @@ const Sidebar = () => {
       <div className="flex flex-col h-full p-4">
         <nav className="space-y-2">
           {sidebarItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
             return (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center px-4 py-3 text-lg font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors rounded-md border border-gray-300 ${
-                  isActive ? 'text-gray-900 bg-gray-100' : ''
+                className={`flex items-center px-4 py-3 text-lg font-medium transition-colors rounded-md border border-gray-300 ${
+                  isActive
+                    ? 'text-gray-900 bg-gray-100 font-semibold shadow-md border-gray-400'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <img src={item.icon} alt={`${item.name} icon`} className="w-6 h-6 mr-2" />

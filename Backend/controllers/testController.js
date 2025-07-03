@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import TestModel from '../models/TestModel.js';
 import CourseModel from '../models/CourseModel.js';
 import QuestionModel from '../models/QuestionModel.js';
+import EnrollmentModel from '../models/EnrollmentModel.js';
 
 const createTest = async (req, res) => {
   try {
@@ -53,7 +54,21 @@ const getAllTest = async (req, res) => {
 
 const freeTests = async (req, res) => {
   try {
-    const tests = await TestModel.find({ isFree: true, status: 'published' }).populate('questions');
+    const userId = req.user?.userId;
+    let tests = await TestModel.find({ isFree: true, status: 'published' }).populate('questions');
+    
+    if (userId) {
+      const enrollments = await EnrollmentModel.find({ userId, status: 'active' })
+        .populate('courseId');
+      const courseIds = enrollments.map(enrollment => enrollment.courseId._id.toString());
+      const paidTests = await TestModel.find({ 
+        courseId: { $in: courseIds },
+        status: 'published',
+        isFree: false 
+      }).populate('questions');
+      tests = [...tests, ...paidTests];
+    }
+    
     res.status(200).json({ tests });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -63,9 +78,22 @@ const freeTests = async (req, res) => {
 const testForACourse = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const userId = req.user?.userId;
+    
     if (!mongoose.isValidObjectId(courseId)) {
       return res.status(400).json({ message: 'Invalid course ID' });
     }
+    
+    const enrollment = await EnrollmentModel.findOne({ 
+      userId, 
+      courseId, 
+      status: 'active' 
+    });
+    
+    if (!enrollment && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not enrolled in this course or course is expired' });
+    }
+    
     const tests = await TestModel.find({ courseId }).populate('questions');
     res.status(200).json({ tests });
   } catch (error) {
@@ -76,13 +104,28 @@ const testForACourse = async (req, res) => {
 const testDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.userId;
+    
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: 'Invalid test ID' });
     }
+    
     const test = await TestModel.findById(id).populate('questions');
     if (!test) {
       return res.status(404).json({ message: 'Test not found' });
     }
+    
+    if (!test.isFree && req.user.role !== 'admin') {
+      const enrollment = await EnrollmentModel.findOne({
+        userId,
+        courseId: test.courseId,
+        status: 'active'
+      });
+      if (!enrollment) {
+        return res.status(403).json({ message: 'Not enrolled in this course or course is expired' });
+      }
+    }
+    
     res.status(200).json({ test });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -160,4 +203,3 @@ const deleteTest = async (req, res) => {
 };
 
 export { freeTests, testForACourse, testDetails, createTest, updateTest, deleteTest, getAllTest };
-

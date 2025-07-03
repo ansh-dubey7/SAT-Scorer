@@ -64,9 +64,8 @@ app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], crede
 
 connectDB();
 connectCloudinary();
-scheduleNotifications(io); // Initialize scheduled notifications
+scheduleNotifications(io);
 
-// Routes
 app.use('/api/user', userRouter);
 app.use('/api/course', courseRouter);
 app.use('/api/test', testRouter);
@@ -83,7 +82,6 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api/support', supportRouter);
 app.use('/api/otp', otpRouter);
 
-// Image Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {
   try {
     res.json({ url: req.file.path });
@@ -96,7 +94,6 @@ app.get('/', (req, res) => {
   res.send('API WORKING');
 });
 
-// Debug log for environment variables
 console.log('Environment Variables Loaded:', {
   CASHFREE_APP_ID: process.env.CASHFREE_APP_ID ? 'Set' : 'Missing',
   CASHFREE_SECRET_KEY: process.env.CASHFREE_SECRET_KEY ? 'Set' : 'Missing',

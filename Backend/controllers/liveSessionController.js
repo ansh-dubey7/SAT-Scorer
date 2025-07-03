@@ -18,7 +18,7 @@ const getSessionForACourse = async (req, res) => {
         }
 
         const sessions = await LiveSessionModel
-            .find({ courseId })
+            .find({ courseId, status: { $in: ['scheduled', 'ongoing'] } })
             .populate('courseId', 'title examType');
 
         if (!sessions || sessions.length === 0) {
@@ -95,7 +95,8 @@ const createSession = async (req, res) => {
             description,
             scheduledAt: scheduleDate,
             link,
-            platform
+            platform,
+            status: 'scheduled'
         });
 
         await session.save();
@@ -158,7 +159,7 @@ const updateSession = async (req, res) => {
             return res.status(400).json({ message: 'Request body is required' });
         }
 
-        const { courseId, title, description, scheduledAt, link, platform } = req.body;
+        const { courseId, title, description, scheduledAt, link, platform, status } = req.body;
 
         // Fetch the original session to get the current courseId
         const originalSession = await LiveSessionModel.findById(sessionId);
@@ -200,6 +201,12 @@ const updateSession = async (req, res) => {
             }
             updateData.platform = platform;
         }
+        if (status) {
+            if (!['scheduled', 'ongoing', 'completed'].includes(status)) {
+                return res.status(400).json({ message: 'Invalid status' });
+            }
+            updateData.status = status;
+        }
 
         // Perform the update
         const session = await LiveSessionModel
@@ -216,9 +223,7 @@ const updateSession = async (req, res) => {
 
         // If courseId changed, update the liveSessions array in both old and new courses
         if (courseId && originalSession.courseId.toString() !== courseId) {
-            // Remove session from old course
             await CourseModel.findByIdAndUpdate(originalSession.courseId, { $pull: { liveSessions: session._id } });
-            // Add session to new course
             await CourseModel.findByIdAndUpdate(courseId, { $push: { liveSessions: session._id } });
         }
 

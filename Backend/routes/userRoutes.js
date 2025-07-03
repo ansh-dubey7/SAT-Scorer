@@ -10,7 +10,6 @@ userRouter.post('/login', loginUser);
 userRouter.get('/profile', authMiddleware, getProfile);
 userRouter.put('/profile', authMiddleware, upload.single('profilePhoto'), updateProfile);
 userRouter.delete('/profile', authMiddleware, deleteProfile);
-
 userRouter.get('/users', authMiddleware, getUsers);
 userRouter.get('/inactive', authMiddleware, inactiveUsers);
 userRouter.get('/:id', authMiddleware, userById);

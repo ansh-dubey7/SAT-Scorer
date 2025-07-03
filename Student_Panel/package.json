@@ -12,13 +12,12 @@
   "dependencies": {
     "@cashfreepayments/cashfree-js": "^1.0.5",
     "@heroicons/react": "^2.2.0",
-    "axios": "^1.10.0",
+    "axios": "^1.9.0",
     "jwt-decode": "^3.1.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",
-    "react-toastify": "^11.0.5",
-    "socket.io-client": "^4.8.1"
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

@@ -20,7 +20,6 @@ export const TestProvider = ({ children }) => {
       const response = await axios.get('http://localhost:5000/api/course', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log('Fetched courses:', response.data.courses || []);
       setCourses(response.data.courses || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch courses');
@@ -36,7 +35,6 @@ export const TestProvider = ({ children }) => {
       const response = await axios.get('http://localhost:5000/api/test', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log('Fetched tests:', response.data.tests || []);
       setTests(response.data.tests || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch tests');

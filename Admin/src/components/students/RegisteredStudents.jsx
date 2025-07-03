@@ -29,10 +29,22 @@ const RegisteredStudents = () => {
     fetchStudents();
   }, []);
 
-  const toggleStudentStatus = async (id) => {
+  const toggleStudentStatus = async (id, name, email) => {
     try {
+      const confirmMessage = `Are you sure you want to ${
+        students.find((s) => s._id === id).status === 'active' ? 'disable' : 'enable'
+      } ${name} (${email})? ${
+        students.find((s) => s._id === id).status === 'active'
+          ? 'The student will not be able to login and will see: "You have been blocked by the admin."'
+          : ''
+      }`;
+      
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
       const student = students.find((s) => s._id === id);
-      const newStatus = student.status === 'active' ? 'disabled' : 'active';
+      const newStatus = student.status === 'active' ? 'blocked' : 'active';
       await axios.put(
         `${apiUrl}/user/${id}/status`,
         { status: newStatus },
@@ -129,7 +141,7 @@ const RegisteredStudents = () => {
                       <span>View</span>
                     </button>
                     <button
-                      onClick={() => toggleStudentStatus(student._id)}
+                      onClick={() => toggleStudentStatus(student._id, student.name, student.email)}
                       className={`${
                         student.status === 'active'
                           ? 'text-red-600 hover:text-red-700'

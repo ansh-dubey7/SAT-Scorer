@@ -1,36 +1,33 @@
 import React from 'react';
 
 const RevenueByCourse = ({ data }) => {
-  // Mock data (used if no data prop is provided, for testing)
-  const mockData = [
-    { course: 'GRE Prep', revenue: 300000, percentage: 40 },
-    { course: 'SAT Math', revenue: 240000, percentage: 32 },
-    { course: 'GMAT Verbal', revenue: 210000, percentage: 28 },
-  ];
-
-  const revenueData = data || mockData;
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow mb-6">
-      <h3 className="text-lg font-semibold text-gray-700 mb-4">Revenue by Course</h3>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 p-3 text-left">Course</th>
-            <th className="border border-gray-300 p-3 text-left">Revenue</th>
-            <th className="border border-gray-300 p-3 text-left">Percentage</th>
-          </tr>
-        </thead>
-        <tbody>
-          {revenueData.map((item, index) => (
-            <tr key={index} className="hover:bg-gray-50">
-              <td className="border border-gray-300 p-3">{item.course}</td>
-              <td className="border border-gray-300 p-3">₹{item.revenue.toLocaleString('en-IN')}</td>
-              <td className="border border-gray-300 p-3">{item.percentage}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-6">Revenue by Course</h2>
+      <div className="overflow-x-auto">
+        {data.length === 0 ? (
+          <p className="text-gray-600 text-center">No revenue data available.</p>
+        ) : (
+          <table className="w-full border border-gray-200 rounded-lg shadow-sm">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-gray-600">
+                <th className="p-4 font-medium">Course</th>
+                <th className="p-4 font-medium">Revenue</th>
+                <th className="p-4 font-medium">Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, index) => (
+                <tr key={index} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
+                  <td className="p-4 text-gray-800">{item.course}</td>
+                  <td className="p-4 text-gray-800">₹{item.revenue.toLocaleString('en-IN')}</td>
+                  <td className="p-4 text-gray-800">{item.percentage}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 };

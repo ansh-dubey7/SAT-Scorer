@@ -4,7 +4,6 @@ import bcrypt from 'bcrypt';
 import validator from 'validator';
 import { upload } from '../config/cloudinary.js';
 
-// Register User
 const registerUser = async (req, res) => {
   try {
     const {
@@ -19,7 +18,6 @@ const registerUser = async (req, res) => {
       role,
     } = req.body;
 
-    // Validate required fields
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
@@ -85,7 +83,6 @@ const registerUser = async (req, res) => {
   }
 };
 
-// Login User
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -100,7 +97,7 @@ const loginUser = async (req, res) => {
     }
 
     if (user.status === 'blocked') {
-      return res.status(403).json({ message: 'Account is blocked' });
+      return res.status(403).json({ message: 'You have been blocked by the admin' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -130,7 +127,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-// Get User Profile
 const getProfile = async (req, res) => {
   try {
     const user = await userModel
@@ -149,7 +145,6 @@ const getProfile = async (req, res) => {
   }
 };
 
-// Update User Profile
 const updateProfile = async (req, res) => {
   try {
     const {
@@ -218,7 +213,6 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// Delete User Profile
 const deleteProfile = async (req, res) => {
   try {
     const user = await userModel.findByIdAndDelete(req.user.userId);
@@ -233,7 +227,6 @@ const deleteProfile = async (req, res) => {
   }
 };
 
-// Get All Users (Admin only)
 const getUsers = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -257,7 +250,6 @@ const getUsers = async (req, res) => {
   }
 };
 
-// Get Inactive Users (Admin only)
 const inactiveUsers = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -280,7 +272,6 @@ const inactiveUsers = async (req, res) => {
   }
 };
 
-// Get User by ID (Admin only)
 const userById = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -311,7 +302,6 @@ const userById = async (req, res) => {
   }
 };
 
-// Update User Status (Admin only)
 const updateUserStatus = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {

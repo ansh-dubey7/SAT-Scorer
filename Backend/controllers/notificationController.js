@@ -9,6 +9,125 @@ import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 import { oauth2Client, getAccessToken } from '../config/googleAuth.js';
 
+// Email HTML Template
+const generateEmailTemplate = (title, message, imageUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="ie=edge">
+      <title>SATscorer Notification</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          background-color: #f4f4f4;
+        }
+        .container {
+          max-width: 600px;
+          margin: 20px auto;
+          background: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: linear-gradient(to right, #3b82f6, #8b5cf6);
+          padding: 20px;
+          text-align: center;
+          color: white;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 24px;
+        }
+        .header h3 {
+          margin: 5px 0 0;
+          font-size: 18px;
+          font-weight: normal;
+        }
+        .content {
+          padding: 30px;
+        }
+        .content p {
+          font-size: 16px;
+          line-height: 1.6;
+          color: #333333;
+          margin: 0 0 15px;
+        }
+        .content img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 5px;
+          margin: 15px 0;
+        }
+        .button {
+          display: inline-block;
+          padding: 10px 20px;
+          background: #3b82f6;
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 10px 0;
+          font-size: 16px;
+        }
+        .footer {
+          background: #f4f4f4;
+          padding: 20px;
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+        }
+        .footer a {
+          color: #3b82f6;
+          text-decoration: none;
+        }
+        @media only screen and (max-width: 600px) {
+          .container {
+            width: 100%;
+            margin: 10px;
+          }
+          .content {
+            padding: 20px;
+          }
+          .header h1 {
+            font-size: 20px;
+          }
+          .header h3 {
+            font-size: 16px;
+          }
+          .content p {
+            font-size: 14px;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>SATscorer</h1>
+          <h3>${title}</h3>
+        </div>
+        <div class="content">
+          <p>Dear User,</p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+          ${imageUrl ? `<img src="${imageUrl}" alt="Notification Image">` : ''}
+          <a href="https://satscorer.com" class="button">Visit SATscorer</a>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} SATscorer. All rights reserved.</p>
+          <p>123 Education Lane, Learning City, ED 12345</p>
+          <p><a href="mailto:support@satscorer.com">Contact Support</a> | <a href="https://satscorer.com/unsubscribe">Unsubscribe</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 const getNotification = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -59,7 +178,7 @@ const markAsRead = async (req, res) => {
     }
 
     if (!notification.readBy.includes(userId)) {
-      notification.readBy.push(userId);
+     Hannah, notification.readBy.push(userId);
       await notification.save();
     }
 
@@ -181,8 +300,26 @@ const createNotification = async (req, res) => {
     );
 
     if (channel === 'email') {
+      // Validate environment variables
+      if (!process.env.GMAIL_USER || !process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REFRESH_TOKEN) {
+        console.error('Missing environment variables for email configuration:', {
+          GMAIL_USER: !!process.env.GMAIL_USER,
+          CLIENT_ID: !!process.env.CLIENT_ID,
+          CLIENT_SECRET: !!process.env.CLIENT_SECRET,
+          REFRESH_TOKEN: !!process.env.REFRESH_TOKEN,
+        });
+        notification.status = 'failed';
+        await notification.save();
+        return res.status(500).json({ message: 'Email configuration error: Missing environment variables' });
+      }
+
       try {
         const accessToken = await getAccessToken();
+        if (!accessToken) {
+          console.error('No access token received from getAccessToken');
+          throw new Error('Failed to retrieve access token');
+        }
+
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
@@ -200,22 +337,20 @@ const createNotification = async (req, res) => {
           to: emailAddresses.join(','),
           subject: title,
           text: message,
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2>${title}</h2>
-              ${imageUrl ? `<img src="${imageUrl}" alt="Notification Image" style="max-width: 100%; height: auto; margin: 10px 0;" />` : ''}
-              <p>${message.replace(/\n/g, '<br>')}</p>
-            </div>
-          `,
+          html: generateEmailTemplate(title, message, imageUrl),
         };
 
         await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully to:', emailAddresses);
       } catch (emailError) {
-        console.error('Error sending email:', emailError);
-        // Save notification as failed if email sending fails
+        console.error('Error sending email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+          response: emailError.response?.data,
+        });
         notification.status = 'failed';
         await notification.save();
-        return res.status(500).json({ message: 'Failed to send email', error: emailError.message });
+        return res.status(500).json({ message: 'Failed to send email notification', error: emailError.message });
       }
     } else if (channel === 'in-app' && !scheduledAt) {
       emitNotification(userIds.map(id => id.toString()), notification);
@@ -226,7 +361,11 @@ const createNotification = async (req, res) => {
       notification,
     });
   } catch (error) {
-    console.error('Error creating notification:', error);
+    console.error('Error creating notification:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+    });
     res.status(500).json({ message: 'Server error while creating notification', error: error.message });
   }
 };
@@ -343,8 +482,26 @@ const resendNotification = async (req, res) => {
       const users = await UserModel.find({ _id: { $in: notification.userId } }).select('email');
       const emailAddresses = users.map(user => user.email);
 
+      // Validate environment variables
+      if (!process.env.GMAIL_USER || !process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.REFRESH_TOKEN) {
+        console.error('Missing environment variables for email configuration:', {
+          GMAIL_USER: !!process.env.GMAIL_USER,
+          CLIENT_ID: !!process.env.CLIENT_ID,
+          CLIENT_SECRET: !!process.env.CLIENT_SECRET,
+          REFRESH_TOKEN: !!process.env.REFRESH_TOKEN,
+        });
+        notification.status = 'failed';
+        await notification.save();
+        return res.status(500).json({ message: 'Email configuration error: Missing environment variables' });
+      }
+
       try {
         const accessToken = await getAccessToken();
+        if (!accessToken) {
+          console.error('No access token received from getAccessToken');
+          throw new Error('Failed to retrieve access token');
+        }
+
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
@@ -362,21 +519,20 @@ const resendNotification = async (req, res) => {
           to: emailAddresses.join(','),
           subject: notification.title,
           text: notification.message,
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2>${notification.title}</h2>
-              ${notification.image ? `<img src="${notification.image}" alt="Notification Image" style="max-width: 100%; height: auto; margin: 10px 0;" />` : ''}
-              <p>${notification.message.replace(/\n/g, '<br>')}</p>
-            </div>
-          `,
+          html: generateEmailTemplate(notification.title, notification.message, notification.image),
         };
 
         await transporter.sendMail(mailOptions);
+        console.log('Email resent successfully to:', emailAddresses);
       } catch (emailError) {
-        console.error('Error resending email:', emailError);
+        console.error('Error resending email:', {
+          message: emailError.message,
+          stack: emailError.stack,
+          response: emailError.response?.data,
+        });
         notification.status = 'failed';
         await notification.save();
-        return res.status(500).json({ message: 'Failed to resend email', error: emailError.message });
+        return res.status(500).json({ message: 'Failed to resend email notification', error: emailError.message });
       }
     } else {
       emitNotification(notification.userId.map(id => id.toString()), notification);
@@ -387,7 +543,11 @@ const resendNotification = async (req, res) => {
       notification,
     });
   } catch (error) {
-    console.error('Error resending notification:', error);
+    console.error('Error resending notification:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+    });
     res.status(500).json({ message: 'Server error while resending notification', error: error.message });
   }
 };

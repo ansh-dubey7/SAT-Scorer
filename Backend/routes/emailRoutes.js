@@ -42,9 +42,14 @@ router.post('/send', authMiddleware, async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully to:', to);
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending email:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data,
+    });
     res.status(500).json({ error: 'Failed to send email', details: error.message });
   }
 });

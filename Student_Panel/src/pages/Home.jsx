@@ -21,7 +21,7 @@ const Home = () => {
         <ExploreCourse></ExploreCourse>
         <TestimonialSection></TestimonialSection>
         <Footer></Footer>
-        <Link to={'/studentdashboard'}>dashboard</Link>
+        {/* <Link to={'/studentdashboard'}>dashboard</Link> */}
     </div>
   )
 }

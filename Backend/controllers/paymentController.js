@@ -12,7 +12,6 @@ const CASHFREE_API_URL = process.env.CASHFREE_API_URL || 'https://sandbox.cashfr
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
 
-// Initiate Payment
 const initiatePayment = async (req, res) => {
   try {
     const { courseId, amount } = req.body;
@@ -20,7 +19,6 @@ const initiatePayment = async (req, res) => {
 
     console.log('Initiate Payment Request:', { courseId, amount, userId });
 
-    // Validate Cashfree credentials
     if (!CASHFREE_APP_ID || !CASHFREE_SECRET_KEY) {
       console.error('Missing Cashfree credentials:', {
         appIdSet: !!CASHFREE_APP_ID,
@@ -62,6 +60,9 @@ const initiatePayment = async (req, res) => {
       return res.status(400).json({ message: 'User is already enrolled in this course' });
     }
 
+    const invoiceNumber = `INV-${Date.now()}-${userId.slice(-4)}`;
+    const coursePrice = (amount / 1.18).toFixed(2);
+    const tax = (amount - coursePrice).toFixed(2);
     const payment = new PaymentModel({
       userId,
       courseId,
@@ -69,6 +70,15 @@ const initiatePayment = async (req, res) => {
       status: 'pending',
       paymentDate: new Date(),
       cashfreeOrderId: `order_${Date.now()}_${userId}`,
+      paymentMethod: 'Cashfree',
+      invoiceDetails: {
+        invoiceNumber,
+        coursePrice: `₹${coursePrice}`,
+        tax: `₹${tax}`,
+        total: `₹${amount.toFixed(2)}`,
+        purchaseDate: new Date().toLocaleDateString(),
+        studentName: user.name,
+      },
     });
     await payment.save();
 
@@ -114,7 +124,6 @@ const initiatePayment = async (req, res) => {
   }
 };
 
-// Handle Cashfree Webhook
 const updatePaymentStatus = async (req, res) => {
   try {
     const rawBody = req.rawBody || JSON.stringify(req.body);
@@ -145,6 +154,8 @@ const updatePaymentStatus = async (req, res) => {
       await session.withTransaction(async () => {
         paymentRecord.status = payment.payment_status === 'SUCCESS' ? 'completed' : 'failed';
         paymentRecord.paymentDate = new Date();
+        paymentRecord.transactionId = payment.cf_payment_id || payment.transaction_id;
+        paymentRecord.paymentMethod = payment.payment_method?.type || 'Unknown';
         await paymentRecord.save({ session });
 
         if (payment.payment_status === 'SUCCESS') {
@@ -189,14 +200,12 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// Manual Payment Verification (Fallback or Client-Side)
 const verifyPayment = async (req, res) => {
   try {
     const { orderId, courseId, userId } = req.body;
-    
 
     if (!orderId || !mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(userId)) {
-      return res.status(400).json({ message: `Invalid order ID ${userId} , course ID, or user ID` });
+      return res.status(400).json({ message: `Invalid order ID, course ID, or user ID` });
     }
 
     const paymentRecord = await PaymentModel.findOne({ cashfreeOrderId: orderId });
@@ -228,6 +237,8 @@ const verifyPayment = async (req, res) => {
       await session.withTransaction(async () => {
         paymentRecord.status = 'completed';
         paymentRecord.paymentDate = new Date();
+        paymentRecord.transactionId = response.data.cf_payment_id || response.data.transaction_id;
+        paymentRecord.paymentMethod = response.data.payment_method?.type || 'Unknown';
         await paymentRecord.save({ session });
 
         const existingEnrollment = await EnrollmentModel.findOne({
@@ -262,11 +273,14 @@ const verifyPayment = async (req, res) => {
   }
 };
 
-// Get Payment History for a User
 const getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const payments = await PaymentModel.find({ userId }).populate('courseId', 'title');
+    const payments = await PaymentModel.find({ userId })
+      .populate('courseId', 'title')
+      .populate('userId', 'name email address')
+      .sort({ paymentDate: -1 }) // Sort by most recent
+      .lean();
     res.status(200).json({
       message: 'Payment history retrieved successfully',
       count: payments.length,
@@ -278,13 +292,32 @@ const getPaymentHistory = async (req, res) => {
   }
 };
 
-// Get All Payments (Admin only)
 const getAllPayment = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. Admin privileges required' });
     }
-    const payments = await PaymentModel.find().populate('userId', 'name email').populate('courseId', 'title');
+    const { startDate, endDate, allStatuses, previousStartDate, previousEndDate } = req.query;
+    const query = {};
+    if (startDate && endDate) {
+      query.paymentDate = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    } else if (previousStartDate && previousEndDate) {
+      query.paymentDate = {
+        $gte: new Date(previousStartDate),
+        $lte: new Date(previousEndDate),
+      };
+    }
+    if (!allStatuses) {
+      query.status = 'completed';
+    }
+    const payments = await PaymentModel.find(query)
+      .populate('userId', 'name email address')
+      .populate('courseId', 'title')
+      .sort({ paymentDate: -1 }) // Sort by most recent
+      .lean();
     res.status(200).json({
       message: 'All payments retrieved successfully',
       count: payments.length,
@@ -296,7 +329,6 @@ const getAllPayment = async (req, res) => {
   }
 };
 
-// Get Payments for a Specific User (Admin only)
 const getPaymentForAUser = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -306,7 +338,11 @@ const getPaymentForAUser = async (req, res) => {
     if (!mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ message: 'Invalid user ID' });
     }
-    const payments = await PaymentModel.find({ userId }).populate('courseId', 'title');
+    const payments = await PaymentModel.find({ userId })
+      .populate('courseId', 'title')
+      .populate('userId', 'name email address')
+      .sort({ paymentDate: -1 }) // Sort by most recent
+      .lean();
     res.status(200).json({
       message: 'User payments retrieved successfully',
       count: payments.length,

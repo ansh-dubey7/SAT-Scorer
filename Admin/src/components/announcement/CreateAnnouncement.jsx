@@ -141,8 +141,13 @@ const CreateAnnouncement = () => {
       setErrors({});
       document.getElementById('image-upload').value = '';
     } catch (error) {
-      console.error('Error creating notification:', error);
-      toast.error(error.response?.data?.message || 'Failed to create notification');
+      console.error('Error creating notification:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      const errorMessage = error.response?.data?.message || 'Failed to create notification';
+      toast.error(errorMessage);
     }
   };
 

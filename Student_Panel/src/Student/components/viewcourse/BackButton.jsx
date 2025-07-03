@@ -15,3 +15,21 @@ const BackButton = ({ to, label }) => {
 };
 
 export default BackButton;
+
+
+// Student/components/viewcourse/BackButton.jsx
+// import React from 'react';
+// import { Link } from 'react-router-dom';
+
+// const BackButton = ({ to, label }) => {
+//   return (
+//     <Link
+//       to={to}
+//       className="inline-block mb-4 text-blue-600 hover:underline flex items-center"
+//     >
+//       ← {label}
+//     </Link>
+//   );
+// };
+
+// export default BackButton;

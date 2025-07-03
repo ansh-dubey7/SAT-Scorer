@@ -17,7 +17,7 @@ import Settings from './Student/pages/Settings';
 import ViewCourse from './Student/pages/ViewCourse';
 import StartTest from './Student/pages/StartTest';
 import TestResult from './Student/pages/TestResult';
-import Notifications from './Student/pages/Notifications';
+// import Notifications from './Student/pages/Notifications';
 import MyProfile from './Student/pages/MyProfile';
 import ExamsLayout from './ExamsLayout';
 import ExamPage from './pages/ExamPage';
@@ -47,7 +47,7 @@ const App = () => {
             <Route path="classes" element={<Classes />} />
             <Route path="support" element={<Support />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="notifications" element={<Notifications />} />
+            {/* <Route path="notifications" element={<Notifications />} /> */}
             <Route path="myprofile" element={<MyProfile />} />
           </Route>
           <Route path="/course/:id" element={<ViewCourse />} />

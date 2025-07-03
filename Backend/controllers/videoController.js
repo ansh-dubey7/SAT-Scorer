@@ -18,7 +18,7 @@ const getVideoForACourse = async (req, res) => {
         }
 
         const videos = await VideoModel
-            .find({ courseId })
+            .find({ courseId, status: 'published' })
             .populate('courseId', 'title examType');
 
         if (!videos || videos.length === 0) {
@@ -44,7 +44,7 @@ const createVideo = async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admin privileges required' });
         }
 
-        const { courseId, title, link } = req.body;
+        const { courseId, title, link, description, duration } = req.body;
 
         // Validate required fields
         if (!courseId || !title || !link) {
@@ -72,7 +72,10 @@ const createVideo = async (req, res) => {
         const video = new VideoModel({
             courseId,
             title,
-            link
+            link,
+            description,
+            duration,
+            status: 'draft'
         });
 
         await video.save();
@@ -135,7 +138,7 @@ const updateVideo = async (req, res) => {
             return res.status(400).json({ message: 'Request body is required' });
         }
 
-        const { courseId, title, link } = req.body;
+        const { courseId, title, link, description, duration, status } = req.body;
 
         // Prepare update object
         const updateData = {};
@@ -157,6 +160,14 @@ const updateVideo = async (req, res) => {
             }
             updateData.link = link;
         }
+        if (description !== undefined) updateData.description = description;
+        if (duration !== undefined) updateData.duration = duration;
+        if (status) {
+            if (!['draft', 'published'].includes(status)) {
+                return res.status(400).json({ message: 'Invalid status' });
+            }
+            updateData.status = status;
+        }
 
         const video = await VideoModel
             .findByIdAndUpdate(
@@ -172,8 +183,8 @@ const updateVideo = async (req, res) => {
 
         // If courseId changed, update the videos array in both old and new courses
         if (courseId && video.courseId.toString() !== courseId) {
-            await CourseModel.findByIdAndUpdate(courseId, { $push: { videos: video._id } });
             await CourseModel.findByIdAndUpdate(video.courseId, { $pull: { videos: video._id } });
+            await CourseModel.findByIdAndUpdate(courseId, { $push: { videos: video._id } });
         }
 
         res.status(200).json({

@@ -1,33 +1,3 @@
-// import React from 'react';
-
-// const ClassCard = ({ cls }) => {
-//   const isLive = cls.status === 'Live';
-
-//   return (
-//     <div className="bg-white rounded-xl shadow-md p-4 border border-gray-200">
-//       <h3 className="text-lg font-semibold mb-1">{cls.title}</h3>
-//       <p className="text-sm text-gray-600 mb-1">Subject: {cls.subject}</p>
-//       <p className="text-sm text-gray-500">Date: {cls.date}</p>
-//       <p className="text-sm text-gray-500 mb-2">Time: {cls.time}</p>
-//       <p className="text-sm text-gray-500 mb-4">Platform: {cls.platform}</p>
-
-//       <a
-//         href={cls.link}
-//         target="_blank"
-//         rel="noopener noreferrer"
-//         className={`block text-center py-2 rounded-lg font-medium ${
-//           isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-//         } transition`}
-//       >
-//         {isLive ? 'Join Now' : 'View Details'}
-//       </a>
-//     </div>
-//   );
-// };
-
-// export default ClassCard;
-
-
 import React from "react";
 
 const ClassCard = ({ cls }) => {

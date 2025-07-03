@@ -111,7 +111,7 @@ const requestOtp = async (req, res) => {
 
     const otp = generateOtp();
     const expiresAt = new Date(
-      Date.now() + (user.role === 'admin' ? 1 * 60 * 1000 : 2 * 60 * 1000)
+      Date.now() + (user.role === 'admin' ? 2 * 60 * 1000 : 2 * 60 * 1000)
     );
 
     const otpRecord = new otpModel({

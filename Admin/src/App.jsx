@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes,Route,Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Layout from './pages/Layout';
@@ -20,6 +20,8 @@ import RegisteredStudents from './components/students/RegisteredStudents';
 import EnrolledStudents from './components/students/EnrolledStudents';
 import ProfileDialog from './components/students/ProfileDialog';
 import SalesAndPayments from './pages/SalesAndPayments';
+import RevenueDashboard from './components/payments/RevenueDashboard';
+import PurchaseHistory from './components/payments/PurchaseHistory';
 import UpdateContent from './pages/UpdateContent';
 import UpdateCourseContentForm from './components/content/UpdateCourseContentForm';
 import LiveSessions from './pages/LiveSessions';
@@ -34,22 +36,22 @@ import CreateAnnouncement from './components/announcement/CreateAnnouncement';
 import ManageAnnouncement from './components/announcement/ManageAnnouncement';
 import SupportAndFeedback from './pages/SupportAndFeedback';
 import Profile from './pages/Profile';
-import { ToastContainer, Slide } from 'react-toastify';
+import { ToastContainer,Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './toastify-custom.css';
 
-const ProtectedRoute = ({ children }) => {
-  const { user, token, isLoading } = useAuth();
+const ProtectedRoute=({ children }) => {
+  const { user,token,isLoading }=useAuth();
   if (isLoading) {
     return <div>Loading...</div>;
   }
-  if (!token || !user || user.role !== 'admin') {
+  if (!token||!user||user.role!=='admin') {
     return <Navigate to="/login" replace />;
   }
   return children;
 };
 
-const App = () => {
+const App=() => {
   return (
     <>
       <ToastContainer
@@ -64,7 +66,7 @@ const App = () => {
         pauseOnHover
         theme="dark"
         transition={Slide}
-        style={{ width: '350px', fontFamily: 'Arial, sans-serif'}}
+        style={{ width: '350px',fontFamily: 'Arial, sans-serif' }}
         className="custom-toast-container"
       />
       <Routes>
@@ -101,6 +103,12 @@ const App = () => {
             <Route path="enrollments" element={<EnrolledStudents />} />
           </Route>
 
+          <Route path="sales" element={<ProtectedRoute><SalesAndPayments /></ProtectedRoute>}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<RevenueDashboard />} />
+            <Route path="history" element={<PurchaseHistory />} />
+          </Route>
+
           <Route path="content" element={<ProtectedRoute><UpdateContent /></ProtectedRoute>}>
             <Route index element={<Navigate to="/content" replace />} />
             <Route path=":courseId/updatecontent" element={<UpdateCourseContentForm />} />
@@ -126,7 +134,6 @@ const App = () => {
             <Route path="manage" element={<ManageAnnouncement />} />
           </Route>
 
-          <Route path="sales" element={<ProtectedRoute><SalesAndPayments /></ProtectedRoute>} />
           <Route path="support" element={<ProtectedRoute><SupportAndFeedback /></ProtectedRoute>} />
         </Route>
       </Routes>

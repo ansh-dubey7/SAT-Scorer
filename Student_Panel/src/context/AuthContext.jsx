@@ -374,4 +374,148 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export default AuthProvider; // Export AuthProvider, not AuthContext
+export default AuthProvider; 
+
+
+// import React, { createContext, useState, useEffect } from 'react';
+// import jwtDecode from 'jwt-decode';
+
+// export const AuthContext = createContext();
+
+// const AuthProvider = ({ children }) => {
+//   const [user, setUser] = useState(null);
+//   const [loading, setLoading] = useState(true);
+
+//   const initializeAuth = async () => {
+//     const token = localStorage.getItem('token');
+//     console.log("Initializing AuthProvider, token:", token ? token.slice(0, 20) + '...' : null); // Debug: Partial token
+//     if (token) {
+//       try {
+//         const decoded = jwtDecode(token);
+//         console.log("Decoded JWT:", decoded); // Debug: Full payload
+//         const currentTime = Date.now() / 1000;
+//         if (decoded.exp < currentTime) {
+//           console.log("Token expired, exp:", decoded.exp, "current:", currentTime);
+//           localStorage.removeItem('token');
+//           setUser(null);
+//           return;
+//         }
+//         if (!decoded.userId || !/^[0-9a-fA-F]{24}$/.test(decoded.userId)) {
+//           console.log("Invalid userId in token:", decoded.userId);
+//           localStorage.removeItem('token');
+//           setUser(null);
+//         } else {
+//           setUser({
+//             userId: decoded.userId,
+//             email: decoded.email || '',
+//             role: decoded.role || 'user',
+//           });
+//         }
+//       } catch (err) {
+//         console.error("JWT decode error:", err.message);
+//         localStorage.removeItem('token');
+//         setUser(null);
+//       }
+//     } else {
+//       console.log("No token found in localStorage");
+//       setUser(null);
+//     }
+//     setLoading(false);
+//   };
+
+//   useEffect(() => {
+//     initializeAuth();
+//   }, []);
+
+//   const login = async (token) => {
+//     localStorage.setItem('token', token);
+//     try {
+//       const decoded = jwtDecode(token);
+//       console.log("Login JWT:", decoded); // Debug
+//       const currentTime = Date.now() / 1000;
+//       if (decoded.exp < currentTime) {
+//         throw new Error('Token expired');
+//       }
+//       if (!decoded.userId || !/^[0-9a-fA-F]{24}$/.test(decoded.userId)) {
+//         throw new Error('Invalid user ID in token');
+//       }
+//       setUser({
+//         userId: decoded.userId,
+//         email: decoded.email || '',
+//         role: decoded.role || 'user',
+//       });
+//     } catch (err) {
+//       console.error("Login JWT decode error:", err.message);
+//       localStorage.removeItem('token');
+//       setUser(null);
+//       throw err;
+//     }
+//   };
+
+//   const logout = () => {
+//     localStorage.removeItem('token');
+//     setUser(null);
+//   };
+
+//   const refreshToken = async () => {
+//     try {
+//       const response = await fetch('http://localhost:5000/api/user/refresh-token', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ token: localStorage.getItem('token') }),
+//       });
+//       const data = await response.json();
+//       if (!response.ok) {
+//         throw new Error(data.message || 'Failed to refresh token');
+//       }
+//       localStorage.setItem('token', data.token);
+//       await login(data.token);
+//       console.log("Token refreshed successfully");
+//     } catch (err) {
+//       console.error("Token refresh error:", err.message);
+//       logout();
+//     }
+//   };
+
+//   const fetchProtected = async (url, options = {}) => {
+//     const token = localStorage.getItem('token');
+//     if (!token) {
+//       throw new Error('No token available');
+//     }
+//     try {
+//       const response = await fetch(url, {
+//         ...options,
+//         headers: {
+//           ...options.headers,
+//           Authorization: `Bearer ${token}`,
+//           'Content-Type': 'application/json',
+//         },
+//       });
+//       if (response.status === 401) {
+//         console.log("401 Unauthorized, attempting to refresh token");
+//         await refreshToken();
+//         const newToken = localStorage.getItem('token');
+//         return fetch(url, {
+//           ...options,
+//           headers: {
+//             ...options.headers,
+//             Authorization: `Bearer ${newToken}`,
+//             'Content-Type': 'application/json',
+//           },
+//         });
+//       }
+//       return response;
+//     } catch (err) {
+//       console.error("Fetch protected error:", err.message);
+//       throw err;
+//     }
+//   };
+
+//   return (
+//     <AuthContext.Provider value={{ user, login, logout, fetchProtected, loading }}>
+//       {children}
+//     </AuthContext.Provider>
+//   );
+// };
+
+// export default AuthProvider;

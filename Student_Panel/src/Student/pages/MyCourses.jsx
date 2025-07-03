@@ -1,175 +1,87 @@
 // import React, { useState, useEffect } from 'react';
 // import CourseCard from '../components/CourseCard';
-// import { fetchCourses } from '../../Data/api';
+// import useApi from '../Data/api';
 
 // const MyCourses = () => {
 //   const [activeTab, setActiveTab] = useState('paid');
 //   const [courses, setCourses] = useState([]);
 //   const [loading, setLoading] = useState(true);
 //   const [error, setError] = useState(null);
+//   const [hasError, setHasError] = useState(false);
+//   const { fetchEnrolledCourses } = useApi();
+
+//   const loadCourses = async () => {
+//     try {
+//       setLoading(true);
+//       setError(null);
+//       setHasError(false);
+//       const data = await fetchEnrolledCourses();
+//       const filteredCourses = data.filter(course => course.type === activeTab);
+//       const transformedCourses = filteredCourses.map(course => ({
+//         id: course.id,
+//         title: course.title,
+//         thumbnail: course.thumbnail || 'https://via.placeholder.com/150',
+//         examType: course.examType,
+//         startDate: course.startDate,
+//         endDate: course.endDate,
+//         progress: course.progress || 0,
+//       }));
+//       setCourses(transformedCourses);
+//     } catch (err) {
+//       setError(err.message || 'Failed to load courses');
+//       setHasError(true);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
 //   useEffect(() => {
-//     const loadCourses = async () => {
-//       try {
-//         setLoading(true);
-//         const data = await fetchCourses(activeTab);
-//         setCourses(data);
-//       } catch (err) {
-//         setError('Failed to load courses');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     loadCourses();
-//   }, [activeTab]);
+//     if (!hasError) {
+//       loadCourses();
+//     }
+//   }, [activeTab, hasError]);
 
 //   return (
-//     <div className="p-6">
+//     <div className="p-6 bg-white">
 //       <h2 className="text-2xl font-bold mb-6 text-gray-800">My Courses</h2>
-//       <div className="flex gap-4 mb-6">
-//         {['paid', 'free'].map((tab) => (
-//           <button
-//             key={tab}
-//             onClick={() => setActiveTab(tab)}
-//             className={`px-4 py-2 rounded-md font-medium ${
-//               activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-//             }`}
-//           >
-//             {tab === 'paid' ? 'Paid' : 'Free'}
-//           </button>
-//         ))}
+//       <div className="flex space-x-4 mb-6">
+//         <button
+//           onClick={() => setActiveTab('paid')}
+//           className={`px-4 py-2 rounded-md font-medium ${
+//             activeTab === 'paid' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+//           }`}
+//         >
+//           Paid
+//         </button>
+//         <button
+//           onClick={() => setActiveTab('free')}
+//           className={`px-4 py-2 rounded-md font-medium ${
+//             activeTab === 'free' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+//           }`}
+//         >
+//           Free
+//         </button>
 //       </div>
 //       {loading ? (
 //         <p className="text-gray-600">Loading...</p>
 //       ) : error ? (
-//         <p className="text-red-600">{error}</p>
-//       ) : (
-//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-//           {courses.map((course) => (
-//             <CourseCard key={course.id} course={course} />
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default MyCourses;
-
-// import React, { useState, useEffect, useContext } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import CourseCard from '../components/CourseCard';
-// import AuthContext from '../../context/AuthContext';
-
-// const MyCourses = () => {
-//   const { user, loading: authLoading } = useContext(AuthContext);
-//   const navigate = useNavigate();
-//   const [activeTab, setActiveTab] = useState('paid');
-//   const [courses, setCourses] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-
-//   useEffect(() => {
-//     if (authLoading) return; // Wait for auth to resolve
-//     if (!user) {
-//       console.log('No user found, redirecting to login');
-//       navigate('/login');
-//       return;
-//     }
-
-//     const loadCourses = async () => {
-//       try {
-//         setLoading(true);
-//         const token = localStorage.getItem('token');
-//         console.log('Token:', token ? 'Present' : 'Missing'); // Debug token presence
-//         if (!token) {
-//           throw new Error('Authentication token missing');
-//         }
-
-//         const response = await fetch('http://localhost:5000/api/enrollment/myenrollment', {
-//           method: 'GET', // Explicitly set method
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`, // Ensure correct format
-//           },
-//         });
-
-//         console.log('Response status:', response.status); // Debug status
-//         const data = await response.json();
-//         console.log('Response data:', data); // Debug response
-
-//         if (!response.ok) {
-//           if (response.status === 401) {
-//             console.log('Unauthorized, clearing token and redirecting to login');
-//             localStorage.removeItem('token');
-//             navigate('/login');
-//             throw new Error('Session expired, please log in again');
-//           }
-//           throw new Error(data.message || `Failed to fetch enrollments (Status: ${response.status})`);
-//         }
-
-//         // Map and filter courses based on activeTab
-//         const filteredCourses = data.enrollments
-//           .filter((enrollment) => {
-//             const isPaid = enrollment.course.price > 0;
-//             const matchesTab = activeTab === 'paid' ? isPaid : !isPaid;
-//             console.log(`Course: ${enrollment.course.title}, Price: ${enrollment.course.price}, Matches tab: ${matchesTab}`); // Debug filtering
-//             return matchesTab;
-//           })
-//           .map((enrollment) => ({
-//             id: enrollment.course._id,
-//             thumbnail: enrollment.course.thumbnail || 'https://via.placeholder.com/600x400',
-//             title: enrollment.course.title,
-//             examType: enrollment.course.examType,
-//             startDate: enrollment.course.startDate
-//               ? new Date(enrollment.course.startDate).toLocaleDateString()
-//               : 'TBD',
-//             endDate: enrollment.course.endDate
-//               ? new Date(enrollment.course.endDate).toLocaleDateString()
-//               : 'TBD',
-//             progress: 0, // Mocked progress
-//           }));
-
-//         console.log('Filtered courses:', filteredCourses); // Debug final courses
-//         setCourses(filteredCourses);
-//       } catch (err) {
-//         console.error('Error loading courses:', err.message); // Debug error
-//         setError('Failed to load courses: ' + err.message);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     loadCourses();
-//   }, [activeTab, user, authLoading, navigate]);
-
-//   return (
-//     <div className="p-6">
-//       <h2 className="text-2xl font-bold mb-6 text-gray-800">My Courses</h2>
-//       <div className="flex gap-4 mb-6">
-//         {['paid', 'free'].map((tab) => (
+//         <div className="text-red-600">
+//           <p>{error}</p>
 //           <button
-//             key={tab}
-//             onClick={() => setActiveTab(tab)}
-//             className={`px-4 py-2 rounded-md font-medium ${
-//               activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-//             }`}
+//             onClick={loadCourses}
+//             className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
 //           >
-//             {tab === 'paid' ? 'Paid' : 'Free'}
+//             Retry
 //           </button>
-//         ))}
-//       </div>
-//       {loading || authLoading ? (
-//         <p className="text-gray-600">Loading...</p>
-//       ) : error ? (
-//         <p className="text-red-600">{error}</p>
-//       ) : courses.length > 0 ? (
-//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-//           {courses.map((course) => (
-//             <CourseCard key={course.id} course={course} />
-//           ))}
 //         </div>
 //       ) : (
-//         <p className="text-gray-600">No {activeTab} courses found.</p>
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+//           {courses.length > 0 ? (
+//             courses.map((course) => <CourseCard key={course.id} course={course} />)
+//           ) : (
+//             <p className="text-gray-600">No courses enrolled.</p>
+//           )}
+//         </div>
 //       )}
 //     </div>
 //   );
@@ -177,268 +89,93 @@
 
 // export default MyCourses;
 
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import CourseCard from '../components/CourseCard';
-import { AuthContext } from '../../context/AuthContext';
+import useApi from '../Data/api';
 
 const MyCourses = () => {
-  const { user, loading: authLoading } = useContext(AuthContext);
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('paid');
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasError, setHasError] = useState(false);
+  const { fetchEnrolledCourses } = useApi();
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setHasError(false);
+      const data = await fetchEnrolledCourses();
+      const filteredCourses = data.filter(course => course.type === activeTab);
+      const transformedCourses = filteredCourses.map(course => ({
+        id: course.id,
+        title: course.title,
+        thumbnail: course.thumbnail || 'https://via.placeholder.com/150',
+        examType: course.examType,
+        startDate: course.startDate,
+        endDate: course.endDate,
+        progress: course.progress || 0,
+      }));
+      setCourses(transformedCourses);
+    } catch (err) {
+      setError(err.message || 'Failed to load courses');
+      setHasError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (authLoading) {
-      console.log('AuthContext still loading, waiting...');
-      return;
+    if (!hasError) {
+      loadCourses();
     }
-
-    if (!user || !user.userId) {
-      console.log('No user or userId found, redirecting to login');
-      localStorage.removeItem('token'); // Clear invalid token
-      navigate('/login');
-      return;
-    }
-
-    const loadCourses = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        console.log('Token:', token ? 'Present' : 'Missing');
-        if (!token) {
-          throw new Error('Authentication token missing');
-        }
-
-        console.log('Fetching enrollments for userId:', user.userId);
-        const response = await axios.get('http://localhost:5000/api/enrollment/myenrollment', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log('Response status:', response.status);
-        console.log('Response data:', response.data);
-
-        if (response.status !== 200) {
-          throw new Error(response.data.message || `Failed to fetch enrollments (Status: ${response.status})`);
-        }
-
-        // Map and filter courses based on activeTab
-        const filteredCourses = response.data.enrollments
-          .filter((enrollment) => {
-            const isPaid = enrollment.course.price > 0;
-            const matchesTab = activeTab === 'paid' ? isPaid : !isPaid;
-            console.log(`Course: ${enrollment.course.title}, Price: ${enrollment.course.price}, Matches tab: ${matchesTab}`);
-            return matchesTab;
-          })
-          .map((enrollment) => ({
-            _id: enrollment.course._id,
-            thumbnail: enrollment.course.thumbnail || 'https://via.placeholder.com/600x400',
-            title: enrollment.course.title,
-            examType: enrollment.course.examType,
-            startDate: enrollment.course.startDate
-              ? new Date(enrollment.course.startDate).toLocaleDateString()
-              : 'TBD',
-            endDate: enrollment.course.endDate
-              ? new Date(enrollment.course.endDate).toLocaleDateString()
-              : 'TBD',
-            price: enrollment.course.price.toString(), // Ensure compatibility with CourseCard
-            about: enrollment.course.about || 'No description available',
-            progress: 0, // Mocked progress
-          }));
-
-        console.log('Filtered courses:', filteredCourses);
-        setCourses(filteredCourses);
-      } catch (err) {
-        console.error('Error loading courses:', err.message);
-        setError('Failed to load courses: ' + err.message);
-        if (err.response?.status === 401 || err.response?.data?.message === 'Invalid user ID') {
-          console.log('Invalid token or user ID, clearing token and redirecting to login');
-          localStorage.removeItem('token');
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCourses();
-  }, [activeTab, user, authLoading, navigate]);
+  }, [activeTab, hasError]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">My Courses</h2>
-      <div className="flex gap-4 mb-6">
-        {['paid', 'free'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-md font-medium ${
-              activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-          >
-            {tab === 'paid' ? 'Paid' : 'Free'}
-          </button>
-        ))}
+      <div className="flex space-x-4 mb-6">
+        <button
+          onClick={() => setActiveTab('paid')}
+          className={`px-4 py-2 rounded-md font-medium ${
+            activeTab === 'paid' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Paid
+        </button>
+        <button
+          onClick={() => setActiveTab('free')}
+          className={`px-4 py-2 rounded-md font-medium ${
+            activeTab === 'free' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Free
+        </button>
       </div>
-      {loading || authLoading ? (
+      {loading ? (
         <p className="text-gray-600">Loading...</p>
       ) : error ? (
-        <p className="text-red-600">{error}</p>
-      ) : courses.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <CourseCard
-              key={course._id}
-              course={course}
-              user={user} // Pass user for consistency
-              isEnrolled={true} // All courses here are enrolled
-            />
-          ))}
+        <div className="text-red-600">
+          <p>{error}</p>
+          <button
+            onClick={loadCourses}
+            className="mt-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
       ) : (
-        <p className="text-gray-600">No {activeTab} courses found.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.length > 0 ? (
+            courses.map((course) => <CourseCard key={course.id} course={course} />)
+          ) : (
+            <p className="text-gray-600">No courses enrolled.</p>
+          )}
+        </div>
       )}
     </div>
   );
 };
 
 export default MyCourses;
-
-
-// import React, { useState, useEffect, useContext } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';
-// import CourseCard from '../components/CourseCard';
-// import { AuthContext } from '../../context/AuthContext';
-
-// const MyCourses = () => {
-//   const { user, loading: authLoading } = useContext(AuthContext);
-//   const navigate = useNavigate();
-//   const [activeTab, setActiveTab] = useState('paid');
-//   const [courses, setCourses] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-
-//   useEffect(() => {
-//     if (authLoading) {
-//       console.log('AuthContext still loading, waiting...');
-//       return;
-//     }
-
-//     if (!user || !user.userId) {
-//       console.log('No user or userId found, redirecting to login');
-//       localStorage.removeItem('token');
-//       navigate('/login');
-//       return;
-//     }
-
-//     const loadCourses = async () => {
-//       try {
-//         setLoading(true);
-//         const token = localStorage.getItem('token');
-//         console.log(token );
-//         if (!token) {
-//           throw new Error('Authentication token missing');
-//         }
-
-//         console.log('Fetching enrollments for userId:', user.userId);
-//         const response = await axios.get('http://localhost:5000/api/enrollment/myenrollment', {
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`,
-//           },
-//         });
-
-//         console.log('Response status:', response.status);
-//         console.log('Response data:', response.data);
-
-//         if (response.status !== 200) {
-//           throw new Error(response.data.message || `Failed to fetch enrollments (Status: ${response.status})`);
-//         }
-
-//         const enrollments = response.data.enrollments || [];
-//         // Map and filter courses based on activeTab
-//         const filteredCourses = enrollments
-//           .filter((enrollment) => {
-//             const isPaid = enrollment.course.price > 0;
-//             const matchesTab = activeTab === 'paid' ? isPaid : !isPaid;
-//             console.log(`Course: ${enrollment.course.title}, Price: ${enrollment.course.price}, Matches tab: ${matchesTab}`);
-//             return matchesTab;
-//           })
-//           .map((enrollment) => ({
-//             _id: enrollment.course._id,
-//             thumbnail: enrollment.course.thumbnail || 'https://via.placeholder.com/600x400',
-//             title: enrollment.course.title,
-//             examType: enrollment.course.examType,
-//             startDate: enrollment.course.startDate
-//               ? new Date(enrollment.course.startDate).toLocaleDateString()
-//               : 'TBD',
-//             endDate: enrollment.course.endDate
-//               ? new Date(enrollment.course.endDate).toLocaleDateString()
-//               : 'TBD',
-//             price: enrollment.course.price.toString(),
-//             about: enrollment.course.about || 'No description available',
-//             progress: 0, // Mocked progress
-//           }));
-
-//         console.log('Filtered courses:', filteredCourses);
-//         setCourses(filteredCourses);
-//       } catch (err) {
-//         console.error('Error loading courses:', err.message);
-//         setError('Failed to load courses: ' + err.message);
-//         if (err.response?.status === 401 || err.response?.data?.message === 'Invalid user ID') {
-//           console.log('Invalid token or user ID, clearing token and redirecting to login');
-//           localStorage.removeItem('token');
-//           navigate('/login');
-//         }
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-//     loadCourses();
-//   }, [activeTab, user, authLoading, navigate]);
-
-//   return (
-//     <div className="p-6">
-//       <h2 className="text-2xl font-bold mb-6 text-gray-800">My Courses</h2>
-//       <div className="flex gap-4 mb-6">
-//         {['paid', 'free'].map((tab) => (
-//           <button
-//             key={tab}
-//             onClick={() => setActiveTab(tab)}
-//             className={`px-4 py-2 rounded-md font-medium ${
-//               activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-//             }`}
-//           >
-//             {tab === 'paid' ? 'Paid' : 'Free'}
-//           </button>
-//         ))}
-//       </div>
-//       {loading || authLoading ? (
-//         <p className="text-gray-600">Loading...</p>
-//       ) : error ? (
-//         <p className="text-red-600">{error}</p>
-//       ) : courses.length > 0 ? (
-//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-//           {courses.map((course) => (
-//             <CourseCard
-//               key={course._id}
-//               course={course}
-//               user={user}
-//               isEnrolled={true}
-//             />
-//           ))}
-//         </div>
-//       ) : (
-//         <p className="text-gray-600">No {activeTab} courses found.</p>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default MyCourses;

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -35,5 +35,5 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ status: 1 });
 UserSchema.index({ role: 1 });
 
-const UserModel = mongoose.models.User || mongoose.model("User", UserSchema);
+const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
 export default UserModel;
