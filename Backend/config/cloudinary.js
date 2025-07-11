@@ -31,7 +31,7 @@ export const upload = multer({
   },
 });
 
-export const uploadToCloudinary = async (filePath, folder = 'SATscorer/course_thumbnail') => {
+export const uploadToCloudinary = async (filePath, folder = 'SATscorer/course_thumbnails') => {
   try {
     const result = await cloudinary.uploader.upload(filePath, {
       folder,
@@ -46,6 +46,10 @@ export const uploadToCloudinary = async (filePath, folder = 'SATscorer/course_th
 
 export const deleteFromCloudinary = async (fileUrl) => {
   try {
+    if (!fileUrl) {
+      console.warn('No file URL provided for deletion');
+      return;
+    }
     const parts = fileUrl.split('/');
     const publicIdWithExtension = parts.slice(-2).join('/');
     const publicId = publicIdWithExtension.split('.').slice(0, -1).join('.');

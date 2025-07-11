@@ -18,17 +18,13 @@ const getVideoForACourse = async (req, res) => {
         }
 
         const videos = await VideoModel
-            .find({ courseId, status: 'published' })
+            .find({ courseId })
             .populate('courseId', 'title examType');
-
-        if (!videos || videos.length === 0) {
-            return res.status(404).json({ message: 'No videos found for this course' });
-        }
 
         res.status(200).json({
             message: 'Videos retrieved successfully',
             count: videos.length,
-            videos
+            videos: videos || []
         });
     } catch (error) {
         console.error('Error fetching videos for course:', error);
@@ -74,8 +70,7 @@ const createVideo = async (req, res) => {
             title,
             link,
             description,
-            duration,
-            status: 'draft'
+            duration
         });
 
         await video.save();
@@ -105,14 +100,10 @@ const getAllVideos = async (req, res) => {
             .find()
             .populate('courseId', 'title examType');
 
-        if (!videos || videos.length === 0) {
-            return res.status(404).json({ message: 'No videos found' });
-        }
-
         res.status(200).json({
             message: 'All videos retrieved successfully',
             count: videos.length,
-            videos
+            videos: videos || []
         });
     } catch (error) {
         console.error('Error fetching all videos:', error);
@@ -138,7 +129,7 @@ const updateVideo = async (req, res) => {
             return res.status(400).json({ message: 'Request body is required' });
         }
 
-        const { courseId, title, link, description, duration, status } = req.body;
+        const { courseId, title, link, description, duration } = req.body;
 
         // Prepare update object
         const updateData = {};
@@ -162,12 +153,6 @@ const updateVideo = async (req, res) => {
         }
         if (description !== undefined) updateData.description = description;
         if (duration !== undefined) updateData.duration = duration;
-        if (status) {
-            if (!['draft', 'published'].includes(status)) {
-                return res.status(400).json({ message: 'Invalid status' });
-            }
-            updateData.status = status;
-        }
 
         const video = await VideoModel
             .findByIdAndUpdate(

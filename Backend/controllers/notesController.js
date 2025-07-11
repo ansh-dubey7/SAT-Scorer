@@ -18,17 +18,13 @@ const getNotesForACourse = async (req, res) => {
         }
 
         const notes = await NotesModel
-            .find({ courseId, status: 'published' })
+            .find({ courseId })
             .populate('courseId', 'title examType');
-
-        if (!notes || notes.length === 0) {
-            return res.status(404).json({ message: 'No notes found for this course' });
-        }
 
         res.status(200).json({
             message: 'Notes retrieved successfully',
             count: notes.length,
-            notes
+            notes: notes || []
         });
     } catch (error) {
         console.error('Error fetching notes for course:', error);
@@ -73,8 +69,7 @@ const createNotes = async (req, res) => {
             courseId,
             title,
             link,
-            content,
-            status: 'draft'
+            content
         });
 
         await note.save();
@@ -104,14 +99,10 @@ const getAllNotes = async (req, res) => {
             .find()
             .populate('courseId', 'title examType');
 
-        if (!notes || notes.length === 0) {
-            return res.status(404).json({ message: 'No notes found' });
-        }
-
         res.status(200).json({
             message: 'All notes retrieved successfully',
             count: notes.length,
-            notes
+            notes: notes || []
         });
     } catch (error) {
         console.error('Error fetching all notes:', error);
@@ -137,7 +128,7 @@ const updateNotes = async (req, res) => {
             return res.status(400).json({ message: 'Request body is required' });
         }
 
-        const { courseId, title, link, content, status } = req.body;
+        const { courseId, title, link, content } = req.body;
 
         // Prepare update object
         const updateData = {};
@@ -160,12 +151,6 @@ const updateNotes = async (req, res) => {
             updateData.link = link;
         }
         if (content !== undefined) updateData.content = content;
-        if (status) {
-            if (!['draft', 'published'].includes(status)) {
-                return res.status(400).json({ message: 'Invalid status' });
-            }
-            updateData.status = status;
-        }
 
         const note = await NotesModel
             .findByIdAndUpdate(

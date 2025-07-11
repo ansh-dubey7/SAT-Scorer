@@ -2,8 +2,6 @@ import mongoose from 'mongoose';
 import courseModel from '../models/CourseModel.js';
 import { uploadToCloudinary } from '../config/cloudinary.js';
 import { deleteFromCloudinary } from '../config/cloudinary.js';
-import fs from 'fs';
-import path from 'path';
 
 // Get All Published Courses (Public)
 const getAllPublishedCourses = async (req, res) => {
@@ -91,8 +89,6 @@ const createCourse = async (req, res) => {
       } catch (uploadError) {
         console.error('Cloudinary upload error:', uploadError);
         return res.status(500).json({ message: 'Error uploading thumbnail', error: uploadError.message });
-      } finally {
-        if (req.file) fs.unlinkSync(req.file.path); // Always clean up uploaded file
       }
     }
 
@@ -118,7 +114,6 @@ const createCourse = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating course:', error);
-    if (req.file) fs.unlinkSync(req.file.path); // Clean up on error
     res.status(500).json({ message: 'Server error while creating course', error: error.message });
   }
 };
@@ -151,20 +146,6 @@ const updateCourse = async (req, res) => {
       updateData.examType = examType;
     }
     if (price) updateData.price = price;
-    if (req.file) {
-      try {
-        updateData.thumbnail = await uploadToCloudinary(req.file.path, 'course_thumbnails');
-        const oldCourse = await courseModel.findById(courseId);
-        if (oldCourse && oldCourse.thumbnail) {
-          await deleteFromCloudinary(oldCourse.thumbnail);
-        }
-      } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
-        return res.status(500).json({ message: 'Error uploading thumbnail', error: uploadError.message });
-      } finally {
-        if (req.file) fs.unlinkSync(req.file.path); // Always clean up uploaded file
-      }
-    }
     if (about) updateData.about = about;
     if (visibility) {
       if (!['private', 'public'].includes(visibility)) {
@@ -182,6 +163,21 @@ const updateCourse = async (req, res) => {
       updateData.status = status;
     }
 
+    if (req.file) {
+      try {
+        // Upload new thumbnail to Cloudinary
+        updateData.thumbnail = await uploadToCloudinary(req.file.path, 'SATscorer/course_thumbnails');
+        // Delete old thumbnail from Cloudinary if it exists
+        const oldCourse = await courseModel.findById(courseId);
+        if (oldCourse && oldCourse.thumbnail) {
+          await deleteFromCloudinary(oldCourse.thumbnail);
+        }
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError);
+        return res.status(500).json({ message: 'Error uploading thumbnail', error: uploadError.message });
+      }
+    }
+
     const course = await courseModel
       .findByIdAndUpdate(courseId, { $set: updateData }, { new: true, runValidators: true })
       .populate('tests videos notes liveSessions enrollments');
@@ -196,7 +192,6 @@ const updateCourse = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating course:', error);
-    if (req.file) fs.unlinkSync(req.file.path); // Clean up on error
     res.status(500).json({ message: 'Server error while updating course', error: error.message });
   }
 };

@@ -30,7 +30,7 @@ const Sidebar = () => {
                 to={item.path}
                 className={`flex items-center px-4 py-3 text-lg font-medium transition-colors rounded-md border border-gray-300 ${
                   isActive
-                    ? 'text-gray-900 bg-gray-100 font-semibold shadow-md border-gray-400'
+                    ? 'text-gray-800 bg-gray-100 font-semibold shadow-md border-teal-500 border-2'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
