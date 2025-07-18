@@ -7,6 +7,11 @@ const LiveSessionSchema = new mongoose.Schema({
   scheduledAt: { type: Date, required: true },
   link: { type: String, required: true }, // URL to platform (e.g., Google Meet)
   platform: { type: String, required: true }, // e.g., Google Meet, Zoom
+  status: { 
+    type: String, 
+    enum: ['scheduled', 'ongoing', 'completed'], 
+    default: 'scheduled' 
+  }, // Status field added
 }, { timestamps: true });
 
 LiveSessionSchema.index({ courseId: 1 });

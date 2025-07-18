@@ -18,8 +18,9 @@ const getSessionForACourse = async (req, res) => {
         }
 
         const sessions = await LiveSessionModel
-            .find({ courseId, status: { $in: ['scheduled', 'ongoing'] } })
-            .populate('courseId', 'title examType');
+            .find({ courseId })
+            .populate('courseId', 'title examType')
+            .sort({ scheduledAt: 1 }); // Sort by scheduledAt ascending
 
         if (!sessions || sessions.length === 0) {
             return res.status(404).json({ message: 'No live sessions found for this course' });
@@ -44,7 +45,7 @@ const createSession = async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admin privileges required' });
         }
 
-        const { courseId, title, description, scheduledAt, link, platform } = req.body;
+        const { courseId, title, description, scheduledAt, link, platform, status } = req.body;
 
         // Validate required fields
         if (!courseId || !title || !scheduledAt || !link || !platform) {
@@ -71,10 +72,10 @@ const createSession = async (req, res) => {
             return res.status(404).json({ message: 'Course not found', field: 'courseId' });
         }
 
-        // Validate scheduledAt (must be a future date)
+        // Validate scheduledAt (must be a valid date)
         const scheduleDate = new Date(scheduledAt);
-        if (isNaN(scheduleDate.getTime()) || scheduleDate <= new Date()) {
-            return res.status(400).json({ message: 'Scheduled date must be in the future', field: 'scheduledAt' });
+        if (isNaN(scheduleDate.getTime())) {
+            return res.status(400).json({ message: 'Invalid scheduled date', field: 'scheduledAt' });
         }
 
         // Validate link (basic URL format check)
@@ -88,6 +89,11 @@ const createSession = async (req, res) => {
             return res.status(400).json({ message: 'Platform must be a non-empty string', field: 'platform' });
         }
 
+        // Validate status if provided
+        if (status && !['scheduled', 'ongoing', 'completed'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status', field: 'status' });
+        }
+
         // Create new live session
         const session = new LiveSessionModel({
             courseId,
@@ -96,7 +102,7 @@ const createSession = async (req, res) => {
             scheduledAt: scheduleDate,
             link,
             platform,
-            status: 'scheduled'
+            status: status || 'scheduled' // Default to 'scheduled' if not provided
         });
 
         await session.save();
@@ -124,7 +130,8 @@ const getAllSession = async (req, res) => {
 
         const sessions = await LiveSessionModel
             .find()
-            .populate('courseId', 'title examType');
+            .populate('courseId', 'title examType')
+            .sort({ scheduledAt: 1 });
 
         if (!sessions || sessions.length === 0) {
             return res.status(404).json({ message: 'No live sessions found' });
@@ -183,8 +190,8 @@ const updateSession = async (req, res) => {
         if (description !== undefined) updateData.description = description;
         if (scheduledAt) {
             const scheduleDate = new Date(scheduledAt);
-            if (isNaN(scheduleDate.getTime()) || scheduleDate <= new Date()) {
-                return res.status(400).json({ message: 'Scheduled date must be in the future', field: 'scheduledAt' });
+            if (isNaN(scheduleDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid scheduled date', field: 'scheduledAt' });
             }
             updateData.scheduledAt = scheduleDate;
         }
@@ -203,7 +210,7 @@ const updateSession = async (req, res) => {
         }
         if (status) {
             if (!['scheduled', 'ongoing', 'completed'].includes(status)) {
-                return res.status(400).json({ message: 'Invalid status' });
+                return res.status(400).json({ message: 'Invalid status', field: 'status' });
             }
             updateData.status = status;
         }
